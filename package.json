@@ -1,0 +1,19 @@
+{	
+	"name": "multy-worlds",
+	"version": "0.0.1",
+	"description": "",
+	"keywords": [
+		"games",
+		"multiplayer"
+	],
+	"author": "Wixonic",
+	"license": "MIT",
+
+	"main": "app.js",
+	"dependencies": {
+		"ws": "^8.11.0"
+	},
+	"scripts": {
+		"start": "node app.js"
+	}
+}

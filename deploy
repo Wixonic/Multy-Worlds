@@ -1,0 +1,7 @@
+gcloud builds submit --tag gcr.io/multy-worlds/ws
+gcloud run deploy --image gcr.io/multy-worlds/ws
+
+us-west1
+europe-west1
+asia-northeast1
+australia-southeast1
