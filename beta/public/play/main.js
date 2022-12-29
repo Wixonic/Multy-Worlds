@@ -4,7 +4,7 @@ let server = "beta";
 
 try {
 	const searchParams = new URLSearchParams(location.search);
-	server = searchParams.get("server")
+	server = searchParams.get("server");
 
 	if (!["beta"].includes(server)) {
 		server = "beta";
@@ -45,18 +45,18 @@ window.addEventListener("DOMContentLoaded",() => {
 			const usernameInput = document.createElement("input");
 			usernameInput.setAttribute("type","text");
 			usernameInput.setAttribute("placeholder","Username..");
-			usernameInput.setAttribute("value",Storage.username);
+			usernameInput.setAttribute("value",Storage.username.split("&lt;").join("<").split("&gt;").join(">"));
 			usernameInput.addEventListener("blur",() => {
 				socket.emit("change-name",usernameInput.value,(username) => {
 					Storage.username = username;
-					usernameInput.value = username;
+					usernameInput.value = username.split("&lt;").join("<").split("&gt;").join(">");
 				});
 			});
 			main.append(usernameInput);
 
 			socket.emit("change-name",Storage.username,(username) => {
 				Storage.username = username;
-				usernameInput.value = username;
+				usernameInput.value = username.split("&lt;").join("<").split("&gt;").join(">");
 			});
 		},
 
