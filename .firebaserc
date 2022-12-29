@@ -1,5 +1,6 @@
 {
-  "projects": {
-    "default": "multy-worlds"
-  }
+	"projects": {
+		"default": "multy-worlds"
+	},
+	"etags": {}
 }

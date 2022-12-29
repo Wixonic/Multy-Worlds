@@ -20,6 +20,19 @@ header title {
 	font-weight: 600;
 }
 
+header id {
+	display: flex;
+	align-items: center;
+
+	position: fixed;
+	top: 0;
+	left: 0;
+
+	height: 2rem;
+
+	padding: 0.5rem;
+}
+
 header ping {
 	display: flex;
 	align-items: center;
@@ -35,8 +48,4 @@ header ping {
 
 main {
 	margin-top: 3rem;
-}
-
-main list user {
-	display: block;
 }

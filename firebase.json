@@ -1,40 +1,21 @@
 {
-	"hosting": {
-		"public": "public",
-		"ignore": [],
-		"rewrites": [{
-			"source": "/ws/us",
-			"run": {
-				"region": "us-west1",
-				"serviceId": "ws"
-			}
-		},{
-			"source": "/ws/eu",
-			"run": {
-				"region": "europe-west1",
-				"serviceId": "ws"
-			}
-		},{
-			"source": "/ws/as",
-			"run": {
-				"region": "asia-northeast1",
-				"serviceId": "ws"
-			}
-		},{
-			"source": "/ws/au",
-			"run": {
-				"region": "australia-southeast1",
-				"serviceId": "ws"
-			}
-		}]
-	},
 	"emulators": {
 		"hosting": {
+			"host": "0.0.0.0",
 			"port": 5000
-		},
-		"ui": {
-			"enabled": false
-		},
-    	"singleProjectMode": true
-	}
+		}
+	},
+	
+	"hosting": [{
+		"public": "app/public",
+		"site": "multy-worlds",
+		"redirects": [{
+			"destination": "https://beta.multy.wixonic.fr",
+			"source": "/beta",
+			"type": 301
+		}]
+	},{
+		"public": "beta/public",
+		"site": "beta-multy-worlds"
+	}]
 }
