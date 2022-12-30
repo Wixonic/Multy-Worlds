@@ -1,7 +1,6 @@
 exports.FORBIDDEN_CHARS = [
 	["<","&lt;"],
-	[">","&gt;"],
-	[" ","_"]
+	[">","&gt;"]
 ];
 
 exports.PORT = parseInt(process.env.PORT) || 8080;

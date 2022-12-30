@@ -18,10 +18,32 @@ const io = new (require("socket.io").Server)(server,{
 
 
 io.rooms = {};
+Object.defineProperty(io,"publicRooms",{
+	get: () => Object.values(io.rooms).sort((a,b) => b.usersCount - a.usersCount).filter((room) => room.mode === "public" && room.usersCount < Room.maxUsersCount)
+});
 class Room {
-	constructor (id) {
-		this.id = id;
-		this.mode = "private";
+	static idPlage = 36 ** 4;
+	static maxUsersCount = 8;
+
+	static checkId (id) {
+		if (typeof id === "string" && id.length >= 3 && id.length <= 15 && !io.of("/").sockets.has(id) && !io.of("/").adapter.rooms.has(id)) {
+			for (let el of FORBIDDEN_CHARS) {
+				id = id.split(el[0]).join(el[1]);
+			}
+		} else {
+			id = Room.generateId();
+		}
+
+		return id;
+	};
+
+	static generateId () {
+		return Room.checkId(Math.floor(Math.random() * (Room.idPlage - Room.idPlage / 36) + Room.idPlage / 36).toString(36));
+	};
+
+	constructor (id,mode) {
+		this.id = id || Room.generateId();
+		this.mode = mode || "private";
 		this.users = [];
 	};
 
@@ -29,47 +51,85 @@ class Room {
 		return this.users[0];
 	};
 
-	async emit (emmiter,event,...args) {
-		if (emmiter) {
-			io.of("/").sockets.get(emmiter).to(this.id).emit(event,...args);
-		} else {
-			io.to(this.id).emit(event,...args);
+	get usersCount () {
+		return this.users.length;
+	};
+
+	export () {
+		let users = [];
+
+		for (let uid of this.users) {
+			const user = io.of("/").sockets.get(uid);
+
+			users.push({
+				id: uid,
+				name: user.name,
+				owner: this.owner === uid,
+				ping: Math.ceil(user.currentPing)
+			});
 		}
+
+		return {
+			id: this.id,
+			mode: this.mode,
+			users: users
+		};
+	};
+
+	lightExport () {
+		return {
+			id: this.id,
+			mode: this.mode,
+			usersCount: this.usersCount
+		};
 	};
 };
 
 
 io.of("/").adapter.on("delete-room",(id) => {
 	if (io.rooms[id] instanceof Room) {
-		console.log(`Room deleted: ${id}`);
 		delete io.rooms[id];
 	}
 });
 
 io.of("/").adapter.on("join-room",(id,uid) => {
-	if (io.rooms[id] instanceof Room) {
-		console.log(`${uid}: Joined ${id}`);
-		io.rooms[id].users.push(uid);
-		io.rooms[id].emit(uid,"user-joined",uid);
-	} else if (id !== uid) {
-		console.log(`${uid}: Created ${id}`);
-		io.rooms[id] = new Room(id);
-		io.rooms[id].users = [uid];
+	if (id !== uid) {
+		const user = io.of("/").sockets.get(uid);
+
+		if (user.room) {
+			user.leave(id);
+			user.emit("room",io.rooms[id].export());
+		} else {
+			if (io.rooms[id] instanceof Room) {
+				if (io.rooms[id].usersCount >= Room.maxUsersCount) {
+					return;
+				} else {				
+					io.rooms[id].users.push(uid);
+					user.volatile.to(id).emit("room-user-joined",user.name);
+				}
+			} else {
+				io.rooms[id] = new Room(id,io.rooms[id]);
+				io.rooms[id].users = [uid];
+			}
+
+			user.room = id;
+			user.emit("room",io.rooms[id].export());
+		}
 	}
 });
 
 io.of("/").adapter.on("leave-room",(id,uid) => {
 	if (io.rooms[id] instanceof Room) {
-		console.log(`${uid}: Leaved ${id}`);
-		io.rooms[id].users.splice(io.rooms[id].users.indexOf(uid));
-		io.rooms[id].emit(uid,"user-leaved",uid);
+		const user = io.of("/").sockets.get(uid);
+		io.rooms[id].users.splice(io.rooms[id].users.indexOf(uid),1);
+		user.volatile.to(id).emit("room-user-leaved",user.name);
+		delete user.room;
+		user.emit("leaved");
 	};
 });
 
 
 io.on("connection",(socket) => {
-	console.log(`${socket.id}: Connected`);
-
 	socket.emit("ask","version",(version) => {
 		if (version !== VERSION) {
 			console.error(`${socket.id}: Running on "${version}", expected "${VERSION}"`);
@@ -77,49 +137,100 @@ io.on("connection",(socket) => {
 		}
 	});
 
-	socket.on("change-name",(name,answer) => {
-		if (typeof name === "string" && name.length >= 3) {
-			for (let el of FORBIDDEN_CHARS) {
-				name = name.split(el[0]).join(el[1]);
-			}
-		} else {
-			name = `Player_${socket.id}`;
+	socket.emit("meta",{
+		rooms: {
+			maxUsersCount: Room.maxUsersCount
 		}
-
-		console.log(`${socket.id}: Changing name to "${name}"`);
-		socket.name = name;
-		answer(name);
 	});
 
-	socket.on("join-room",(id,callback) => {
-		if (typeof id === "string" && id) {
-			for (let el of FORBIDDEN_CHARS) {
-				id = id.split(el[0]).join(el[1]);
+	socket.on("change-name",(name,callback) => {
+		if (socket.name !== name) {
+			if (typeof name === "string" && name.length >= 3 && name.length <= 20) {
+				for (let el of FORBIDDEN_CHARS) {
+					name = name.split(el[0]).join(el[1]);
+				}
+			} else {
+				name = socket.id;
 			}
+
+			socket.name = name;
+			callback(name);
+		}
+	});
+
+
+	socket.on("room-check-id",(id,callback) => callback(Room.checkId(id)));
+
+	socket.on("room-generate-id",(callback) => {
+		callback(Room.generateId());
+	});
+
+	socket.on("room-quick-join",() => {
+		const room = io.publicRooms[0];
+
+		if (room instanceof Room) {
+			socket.join(room.id);
 		} else {
-			id = Math.floor(Math.random() * (36 ** 4 - 36 ** 3) + 36 ** 3).toString(36);
+			const id = Room.generateId();
+			io.rooms[id] = "public";
+			socket.join(id);
+		}
+	});
+
+	socket.on("room-join",(id,callback) => {
+		if (io.rooms[id] instanceof Room && io.rooms[id].usersCount < Room.maxUsersCount) {
+			socket.join(id);
+		} else {
+			callback();
+		}
+	});
+
+	socket.on("room-create",(id) => {
+		id = Room.checkId(id);
+		socket.join(id);
+	});
+
+	socket.on("rooms-get",(callback) => {
+		let rooms = [];
+
+		for (let room of io.publicRooms) {
+			rooms.push(room.lightExport());
 		}
 
-		socket.join(id);
-		callback(id);
+		callback(rooms);
+	});
+
+	socket.on("room-message",(message) => {
+		const room = io.rooms[socket.room];
+		
+		if (room instanceof Room && typeof message === "string" && message.length >= 1) {
+			message = message.slice(0,150);
+
+			for (let el of FORBIDDEN_CHARS) {
+				message = message.split(el[0]).join(el[1]);
+			}
+
+			io.to(room.id).volatile.emit("room-message",{
+				author: {
+					id: socket.id,
+					name: socket.name
+				},
+				content: message,
+				type: "user",
+				style: room.owner === socket.id ? "owner" : "default"
+			});
+		}
 	});
 
 
 	socket.ping = () => {
+		const room = io.rooms[socket.room];
 		const pingStart = performance.now();
-		socket.emit("ping",Math.ceil(socket.currentPing),() => {
-			socket.currentPing = performance.now() - pingStart;
-		});
-
+		socket.emit("ping",Math.ceil(socket.currentPing),room instanceof Room ? room.export().users : [],() => socket.currentPing = performance.now() - pingStart);
 		setTimeout(socket.ping,1000);
 	};
 	socket.ping();
-
-
-	socket.on("disconnecting",(reason) => {
-		console.warn(`${socket.id}: Disconnected (${reason})`);
-	});
 });
 
 
-server.listen(PORT,() => console.info(`Server: listening on port ${PORT}`));
+server.listen(PORT,() => console.info(`Server is listening on port ${PORT}`));

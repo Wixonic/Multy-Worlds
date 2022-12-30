@@ -1,0 +1,9 @@
+@font-face {
+	font-family: "Fira Code";
+	src: url("fira-code.ttf") format("truetype");
+}
+
+@font-face {
+	font-family: "Inter";
+	src: url("inter.ttf") format("truetype");
+}

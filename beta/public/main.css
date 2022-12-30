@@ -1,0 +1,114 @@
+@import url("fonts.css");
+
+* {
+	-ms-touch-action: manipulation;
+	touch-action: manipulation;
+
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	-ms-appearance: none;
+	appearance: none;
+
+	-webkit-touch-callout: none;
+	outline: none;
+
+	font-weight: normal;
+	font-weight: 400;
+
+	cursor: inherit;
+
+	margin: 0;
+	padding: 0;
+
+	overflow: hidden;
+}
+
+:root {
+	cursor: default;
+	
+	overflow: scroll;
+}
+
+body {
+	background: inherit;
+}
+
+input,
+textarea,
+select,
+*[contenteditable="true"] {
+	-webkit-user-select: text;
+	-moz-user-select: text;
+	-ms-user-select: text;
+	user-select: text;
+
+	cursor: text;
+}
+
+::selection {
+	background: rgba(255,255,255,0.3);
+}
+
+h1 {
+	font-size: 1.5rem;
+	font-weight: bold;
+	font-weight: 750;
+	
+	margin-top: 0.3rem;
+	margin-bottom: 0.6rem;
+}
+
+b {
+	font-weight: bold;
+	font-weight: 600;
+}
+
+p {
+	margin-top: 0.4rem;
+	margin-bottom: 0.4rem;
+}
+
+a {
+	display: inline-block;
+
+	color: #08F;
+	text-decoration: none;
+
+	border-bottom: 0.08rem solid transparent;
+
+	transition: border-color 0.2s linear;
+
+	cursor: pointer;
+
+	overflow: initial;
+}
+
+a:hover {
+	border-color: #08F;
+}
+
+button {
+	background: #333;
+
+	color: #FFF;
+	font-size: 0.9rem;
+
+	border: none;
+	border-radius: 0.2rem;
+
+	margin: 0.2rem;
+	padding: 0.3rem 0.7rem;
+
+	transition: background-color 0.2s linear;
+
+	cursor: pointer;
+}
+
+button:hover {
+	background: #555;
+}
