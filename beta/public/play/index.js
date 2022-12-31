@@ -203,11 +203,47 @@ window.start = () => {
 				roomChat.append(roomChatInput);
 			
 			main.append(roomChat);
+			
+			const options = document.createElement("options");
 
-			// room start
-			// room public/private
+				if (room.users[0].id === socket.id) {
+					const startButton = document.createElement("button");
+					startButton.id = "start";
+					startButton.innerHTML = `<i class="fa-solid fa-play"></i> Start`;
+					startButton.addEventListener("click",() => {
+						if (!startButton.classList.contains("disabled")) {
+							startButton.classList.add("disabled");
+							socket.emit("game-start",() => startButton.classList.remove("disabled"));
+						}
+					});
+					options.append(startButton);
+				}
+
+				const modeSwitch = document.createElement("switch");
+				modeSwitch.classList.toggle("active",room.mode === "public");
+				modeSwitch.innerHTML = "<item>Private</item><item>Public</item><cache></cache>";
+
+				if (room.users[0].id === socket.id) {
+					modeSwitch.classList.add("canclick");
+					modeSwitch.addEventListener("click",() => {
+						if (!modeSwitch.classList.contains("disabled")) {
+							modeSwitch.classList.add("disabled");
+							socket.emit("room-change-mode",modeSwitch.classList.contains("active"),() => modeSwitch.classList.remove("disabled"));
+						}
+					});
+				}
+
+				options.append(modeSwitch);
+
+			main.append(options);
 
 			Display.roomUsers(room.users);
+		},
+
+		roomMode (mode) {
+			if (document.querySelector("main options switch")) {
+				document.querySelector("main options switch").classList.toggle("active",!mode);
+			}
 		},
 
 		roomUsers (users) {
@@ -257,6 +293,7 @@ window.start = () => {
 	});
 
 	socket.on("room",Display.room);
+	socket.on("room-mode-changed",Display.roomMode);
 
 	socket.on("room-message",(message) => Display.message({
 		author: message.author.name || message.author.id,

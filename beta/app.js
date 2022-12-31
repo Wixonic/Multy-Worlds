@@ -19,7 +19,7 @@ const io = new (require("socket.io").Server)(server,{
 
 io.rooms = {};
 Object.defineProperty(io,"publicRooms",{
-	get: () => Object.values(io.rooms).filter((room) => room.mode === "public" && room.usersCount < Room.maxUsersCount).sort((a,b) => b.usersCount - a.usersCount)
+	get: () => Object.values(io.rooms).filter((room) => room.status === "waiting" && room.mode === "public" && room.usersCount < Room.maxUsersCount).sort((a,b) => b.usersCount - a.usersCount)
 });
 class Room {
 	static idPlage = 36 ** 4;
@@ -42,6 +42,7 @@ class Room {
 	constructor (id,mode) {
 		this.id = id || Room.generateId();
 		this.mode = mode || "private";
+		this.status = "waiting";
 		this.users = [];
 	};
 
@@ -70,6 +71,7 @@ class Room {
 		return {
 			id: this.id,
 			mode: this.mode,
+			status: this.status,
 			users: users
 		};
 	};
@@ -171,6 +173,16 @@ io.on("connection",(socket) => {
 	});
 
 
+	socket.on("room-change-mode",(mode,callback) => {
+		const room = io.rooms[socket.room];
+
+		if (room instanceof Room && room.owner === socket.id) {
+			room.mode = mode ? "private" : "public";
+			io.to(room.id).emit("room-mode-changed",mode);
+			callback();
+		}
+	});
+
 	socket.on("room-create",(id) => {
 		id = Room.checkId(id);
 		socket.join(id);
@@ -184,6 +196,8 @@ io.on("connection",(socket) => {
 		}
 	});
 
+	socket.on("room-leave",() => socket.leave(socket.room));
+
 	socket.on("room-kick",(uid,callback) => {
 		const room = io.rooms[socket.room];
 		const user = io.of("/").sockets.get(uid);
@@ -196,8 +210,6 @@ io.on("connection",(socket) => {
 			callback();
 		}
 	});
-
-	socket.on("room-leave",() => socket.leave(socket.room));
 
 	socket.on("room-message",(message) => {
 		const room = io.rooms[socket.room];
@@ -216,6 +228,18 @@ io.on("connection",(socket) => {
 				type: "user",
 				style: room.owner === socket.id ? "owner" : "default"
 			});
+		}
+	});
+
+
+	socket.on("game-start",(callback) => {
+		const room = io.rooms[socket.room];
+
+		if (room instanceof Room && room.owner === socket.id && room.status === "waiting") {
+			room.status = "playing";
+			io.to(room.id).emit("game-start",/* mode */);
+		} else if (room.status !== "waiting") {
+			callback();
 		}
 	});
 
