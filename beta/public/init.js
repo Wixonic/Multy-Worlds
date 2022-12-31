@@ -1,7 +1,2 @@
-let fonts = [];
-
-document.fonts.forEach((font) => {
-	fonts.push(font.load());
-});
-
-Promise.all(fonts).finally(() => document.body.innerHTML = `<a href="/play/">Play</a>`);
+document.fonts.forEach((font) => font.load());
+document.fonts.ready.finally(() => document.body.innerHTML = `<a href="/play/">Play</a>`);

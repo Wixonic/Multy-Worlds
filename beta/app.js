@@ -19,7 +19,7 @@ const io = new (require("socket.io").Server)(server,{
 
 io.rooms = {};
 Object.defineProperty(io,"publicRooms",{
-	get: () => Object.values(io.rooms).sort((a,b) => b.usersCount - a.usersCount).filter((room) => room.mode === "public" && room.usersCount < Room.maxUsersCount)
+	get: () => Object.values(io.rooms).filter((room) => room.mode === "public" && room.usersCount < Room.maxUsersCount).sort((a,b) => b.usersCount - a.usersCount)
 });
 class Room {
 	static idPlage = 36 ** 4;
@@ -27,9 +27,7 @@ class Room {
 
 	static checkId (id) {
 		if (typeof id === "string" && id.length >= 3 && id.length <= 15 && !io.of("/").sockets.has(id) && !io.of("/").adapter.rooms.has(id)) {
-			for (let el of FORBIDDEN_CHARS) {
-				id = id.split(el[0]).join(el[1]);
-			}
+			FORBIDDEN_CHARS.forEach((char) => id = id.split(char[0]).join(char[1]));
 		} else {
 			id = Room.generateId();
 		}
@@ -58,7 +56,7 @@ class Room {
 	export () {
 		let users = [];
 
-		for (let uid of this.users) {
+		this.users.forEach((uid) => {
 			const user = io.of("/").sockets.get(uid);
 
 			users.push({
@@ -67,7 +65,7 @@ class Room {
 				owner: this.owner === uid,
 				ping: Math.ceil(user.currentPing)
 			});
-		}
+		});
 
 		return {
 			id: this.id,
@@ -105,7 +103,7 @@ io.of("/").adapter.on("join-room",(id,uid) => {
 					return;
 				} else {				
 					io.rooms[id].users.push(uid);
-					user.volatile.to(id).emit("room-user-joined",user.name);
+					user.to(id).emit("room-user-joined",user.name);
 				}
 			} else {
 				io.rooms[id] = new Room(id,io.rooms[id]);
@@ -122,7 +120,7 @@ io.of("/").adapter.on("leave-room",(id,uid) => {
 	if (io.rooms[id] instanceof Room) {
 		const user = io.of("/").sockets.get(uid);
 		io.rooms[id].users.splice(io.rooms[id].users.indexOf(uid),1);
-		user.volatile.to(id).emit("room-user-leaved",user.name);
+		user.to(id).emit("room-user-leaved",user.name);
 		delete user.room;
 		user.emit("leaved");
 	};
@@ -146,9 +144,7 @@ io.on("connection",(socket) => {
 	socket.on("change-name",(name,callback) => {
 		if (socket.name !== name) {
 			if (typeof name === "string" && name.length >= 3 && name.length <= 20) {
-				for (let el of FORBIDDEN_CHARS) {
-					name = name.split(el[0]).join(el[1]);
-				}
+				FORBIDDEN_CHARS.forEach((char) => name = name.split(char[0]).join(char[1]));
 			} else {
 				name = socket.id;
 			}
@@ -160,10 +156,7 @@ io.on("connection",(socket) => {
 
 
 	socket.on("room-check-id",(id,callback) => callback(Room.checkId(id)));
-
-	socket.on("room-generate-id",(callback) => {
-		callback(Room.generateId());
-	});
+	socket.on("room-generate-id",(callback) => callback(Room.generateId()));
 
 	socket.on("room-quick-join",() => {
 		const room = io.publicRooms[0];
@@ -177,6 +170,12 @@ io.on("connection",(socket) => {
 		}
 	});
 
+
+	socket.on("room-create",(id) => {
+		id = Room.checkId(id);
+		socket.join(id);
+	});
+
 	socket.on("room-join",(id,callback) => {
 		if (io.rooms[id] instanceof Room && io.rooms[id].usersCount < Room.maxUsersCount) {
 			socket.join(id);
@@ -185,20 +184,20 @@ io.on("connection",(socket) => {
 		}
 	});
 
-	socket.on("room-create",(id) => {
-		id = Room.checkId(id);
-		socket.join(id);
-	});
+	socket.on("room-kick",(uid,callback) => {
+		const room = io.rooms[socket.room];
+		const user = io.of("/").sockets.get(uid);
 
-	socket.on("rooms-get",(callback) => {
-		let rooms = [];
-
-		for (let room of io.publicRooms) {
-			rooms.push(room.lightExport());
+		if (room instanceof Room && room.owner === socket.id && room.users.includes(uid)) {
+			io.to(room.id).except(uid).emit("room-user-kicked",user.name || user.id,socket.name || socket.id);
+			user.emit("room-kicked",socket.name || socket.id);
+			user.leave(socket.room);
+		} else {
+			callback();
 		}
-
-		callback(rooms);
 	});
+
+	socket.on("room-leave",() => socket.leave(socket.room));
 
 	socket.on("room-message",(message) => {
 		const room = io.rooms[socket.room];
@@ -206,11 +205,9 @@ io.on("connection",(socket) => {
 		if (room instanceof Room && typeof message === "string" && message.length >= 1) {
 			message = message.slice(0,150);
 
-			for (let el of FORBIDDEN_CHARS) {
-				message = message.split(el[0]).join(el[1]);
-			}
+			FORBIDDEN_CHARS.forEach((char) => message = message.split(char[0]).join(char[1]));
 
-			io.to(room.id).volatile.emit("room-message",{
+			io.to(room.id).emit("room-message",{
 				author: {
 					id: socket.id,
 					name: socket.name
@@ -223,10 +220,19 @@ io.on("connection",(socket) => {
 	});
 
 
+	socket.on("rooms-get",(callback) => {
+		let rooms = [];
+
+		io.publicRooms.forEach((room) => rooms.push(room.lightExport()));
+
+		callback(rooms);
+	});
+
+
 	socket.ping = () => {
 		const room = io.rooms[socket.room];
 		const pingStart = performance.now();
-		socket.emit("ping",Math.ceil(socket.currentPing),room instanceof Room ? room.export().users : [],() => socket.currentPing = performance.now() - pingStart);
+		socket.volatile.emit("ping",Math.ceil(socket.currentPing),room instanceof Room ? room.export().users : [],() => socket.currentPing = performance.now() - pingStart);
 		setTimeout(socket.ping,1000);
 	};
 	socket.ping();

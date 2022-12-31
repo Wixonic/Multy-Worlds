@@ -46,11 +46,10 @@ header id {
 	top: 0.1rem;
 	left: 0.1rem;
 
-	color: #AAA;
 	font-family: "Fira Code", monospace;
-	font-size: 0.6rem;
+	font-size: 0.7rem;
 
-	opacity: 0.25;
+	opacity: 0.3;
 
 	cursor: text;
 }
@@ -62,11 +61,10 @@ header ping {
 	top: 0.1rem;
 	right: 0.1rem;
 
-	color: #AAA;
 	font-family: "Fira Code", monospace;
-	font-size: 0.6rem;
+	font-size: 0.7rem;
 
-	opacity: 0.25;
+	opacity: 0.3;
 }
 
 main {
@@ -187,8 +185,6 @@ main[status="home"] input {
 
 	color: #AAA;
 	font-size: 1.1rem;
-	font-weight: bold;
-	font-weight: 600;
 	text-align: center;
 
 	border: none;
@@ -331,13 +327,12 @@ main[status="room"] id {
 
 	display: block;
 
-	width: 100%;
+	width: calc(100% - 0.4rem);
+	max-width: calc(60rem - 0.4rem);
 
 	color: #AAA;
 	font-family: "Fira Code", monospace;
 	font-size: 1.5rem;
-	font-weight: bold;
-	font-weight: 600;
 	
 	padding: 0.2rem;
 
@@ -404,9 +399,7 @@ main[status="room"] list user button.kick {
 	grid-column: 3;
 	grid-row: 1;
 
-	display: flex;
-	justify-content: center;
-	align-items: center;
+	display: block;
 
 	background: transparent;
 
@@ -415,10 +408,8 @@ main[status="room"] list user button.kick {
 	border: 0.1rem solid #F00;
 	border-radius: 0.4rem;
 
-	width: 100%;
-	height: 100%;
-
-	padding: 0;
+	margin: auto;
+	padding: 0.25rem 0.5rem;
 
 	transition: none;
 }
@@ -454,6 +445,8 @@ main[status="room"] chat messages {
 
 	display: grid;
 	align-items: end;
+
+	overflow-y: scroll;
 }
 
 main[status="room"] chat messages container {
@@ -466,8 +459,8 @@ main[status="room"] chat messages container {
 
 	width: 100%;
 	height: fit-content;
-
-	overflow-y: scroll;
+	
+	overflow: visible;
 }
 
 main[status="room"] chat messages container message {
@@ -477,7 +470,7 @@ main[status="room"] chat messages container message {
 }
 
 main[status="room"] chat messages container message content {
-	overflow: visible;
+	word-wrap: break-word;
 }
 
 main[status="room"] chat messages container message[type="system"] {

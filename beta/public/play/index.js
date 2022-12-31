@@ -106,13 +106,12 @@ window.start = () => {
 								joinRoomList.innerHTML = "";
 
 								rooms.sort((a,b) => b.usersCount - a.usersCount);
-
-								for (let room of rooms) {
+								rooms.forEach((room) => {
 									room.el = document.createElement("room");
 									room.el.innerHTML = `<id>${room.id}</id><count>${room.usersCount}/${meta.rooms.maxUsersCount}</count>`;
 									room.el.addEventListener("click",() => joinRoomInput.value = room.id);
 									joinRoomList.append(room.el);
-								}
+								});
 							}
 						});
 					});
@@ -172,6 +171,7 @@ window.start = () => {
 			
 			if (messageContainer) {
 				messageContainer.innerHTML += `<message type="${message.type}" mode="${message.style}">${message.type === "user" ? `<author>${message.style === "owner" ? `<icon><i class="fa-regular fa-crown"></i></icon>` : ""}${message.author}</author>:` : ""}<content${message.type === "user" ? ` style="margin-left: 0.5rem;"` : ""}>${message.content}</content></message>`;
+				messageContainer.parentElement.scrollTo(0,messageContainer.clientHeight);
 			}
 		},
 
@@ -217,10 +217,19 @@ window.start = () => {
 
 				for (let user of users) {
 					const userEl = document.createElement("user");
+					userEl.id = user.id;
 					userEl.setAttribute("owner",user.owner);
 					userEl.innerHTML = `${user.owner ? `<icon><i class="fa-regular fa-crown"></i></icon>` : ""}<name>${user.name}</name>${users[0].id === socket.id && user.id !== socket.id ? `<button class="kick">Kick</button>` : ""}${user.id !== socket.id ? `<ping>${user.ping} ms</ping>` : ""}`;
 					container.append(userEl);
 				}
+
+				document.querySelectorAll("main list user button.kick").forEach((el) => {
+					el.addEventListener("click",() => {
+						socket.emit("room-kick",el.parentElement.id,() => {
+							alert("Cannot kick user");
+						});
+					});
+				});
 			}
 		},
 
@@ -268,7 +277,18 @@ window.start = () => {
 		type: "system"
 	}));
 
+	socket.on("room-user-kicked",(user,by) => Display.message({
+		content: `${by} asked ${user} to leave (by force)`,
+		style: "leave",
+		type: "system"
+	}));
+
 	socket.on("room-leaved",Display.home);
+
+	socket.on("room-kicked",(by) => {
+		Display.home();
+		alert(`You got kicked by ${by}`);
+	});
 
 
 	socket.on("meta",(meta) => window.meta = meta);
