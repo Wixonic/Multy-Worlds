@@ -12,8 +12,12 @@ server = location.hostname === "localhost" ? "local" : server;
 history.pushState(null,"",`${location.protocol}//${location.host}${location.pathname}?server=${server}`);
 
 
+window.reset = () => {
+	document.body.innerHTML = `<header><id></id><title>Multy Worlds</title><ping>xx ms</ping></header><main status="connecting"><h1>Connecting to server...</h1><p>If you're stuck on this page, reload it.</p></main>`;
+};
+
 document.fonts.load("1rem Inter").finally(() => {
-	document.body.innerHTML = `<header><id></id><title>Multy Worlds</title><ping>?? ms</ping></header><main status="connecting"><h1>Connecting to server...</h1><p>If you're stuck on this page, reload it.</p></main>`;
+	reset();
 	
 	document.fonts.forEach((font) => font.load());
 	document.fonts.ready.finally(async () => {

@@ -1,4 +1,5 @@
 const { FORBIDDEN_CHARS, PORT, VERSION } = require("./static.js");
+const { World, WorldList } = require("./worlds.js");
 
 const server = require("http").createServer();
 const io = new (require("socket.io").Server)(server,{
@@ -6,6 +7,9 @@ const io = new (require("socket.io").Server)(server,{
 	pingInterval: 5000,
 	pingTimeout: 10000,
 	upgradeTimeout: 10000,
+
+	reconnection: true,
+	reconnectionAttempts: 5,
 
 	maxHttpBufferSize: 1e6,
 	path: "/",
@@ -15,6 +19,7 @@ const io = new (require("socket.io").Server)(server,{
 		origin: true
 	}
 });
+
 
 
 io.rooms = {};
@@ -44,6 +49,10 @@ class Room {
 		this.mode = mode || "private";
 		this.status = "waiting";
 		this.users = [];
+	};
+
+	get canJoin () {
+		return this.usersCount < Room.maxUsersCount && this.status === "waiting";
 	};
 
 	get owner () {
@@ -86,6 +95,7 @@ class Room {
 };
 
 
+
 io.of("/").adapter.on("delete-room",(id) => {
 	if (io.rooms[id] instanceof Room) {
 		delete io.rooms[id];
@@ -120,11 +130,20 @@ io.of("/").adapter.on("join-room",(id,uid) => {
 
 io.of("/").adapter.on("leave-room",(id,uid) => {
 	if (io.rooms[id] instanceof Room) {
+		const userIndex = io.rooms[id].users.indexOf(uid);
 		const user = io.of("/").sockets.get(uid);
-		io.rooms[id].users.splice(io.rooms[id].users.indexOf(uid),1);
+		io.rooms[id].users.splice(userIndex,1);
 		user.to(id).emit("room-user-leaved",user.name);
 		delete user.room;
 		user.emit("leaved");
+
+		if (userIndex === 0) {
+			const newOwner = io.of("/").sockets.get(io.rooms[id].users[0]);
+
+			if (newOwner) {
+				newOwner.emit("room-owner",true);
+			}
+		}
 	};
 });
 
@@ -143,6 +162,8 @@ io.on("connection",(socket) => {
 		}
 	});
 
+
+
 	socket.on("change-name",(name,callback) => {
 		if (socket.name !== name) {
 			if (typeof name === "string" && name.length >= 3 && name.length <= 20) {
@@ -157,20 +178,18 @@ io.on("connection",(socket) => {
 	});
 
 
-	socket.on("room-check-id",(id,callback) => callback(Room.checkId(id)));
-	socket.on("room-generate-id",(callback) => callback(Room.generateId()));
 
-	socket.on("room-quick-join",() => {
-		const room = io.publicRooms[0];
+	socket.on("game-start",(callback) => {
+		const room = io.rooms[socket.room];
 
-		if (room instanceof Room) {
-			socket.join(room.id);
-		} else {
-			const id = Room.generateId();
-			io.rooms[id] = "public";
-			socket.join(id);
+		if (room instanceof Room && room.owner === socket.id && room.status === "waiting") {
+			io.rooms[socket.room].status = "loading";
+			io.to(room.id).emit("game-load",WorldList[Math.floor(Math.random() * WorldList.length)]);
+		} else if (room.status !== "waiting") {
+			callback();
 		}
 	});
+
 
 
 	socket.on("room-change-mode",(mode,callback) => {
@@ -183,13 +202,31 @@ io.on("connection",(socket) => {
 		}
 	});
 
+	socket.on("room-check-id",(id,callback) => callback(Room.checkId(id)));
+
 	socket.on("room-create",(id) => {
 		id = Room.checkId(id);
 		socket.join(id);
 	});
 
+	socket.on("room-generate-id",(callback) => callback(Room.generateId()));
+
+	socket.on("room-quick-join",() => {
+		const room = io.publicRooms[0];
+
+		if (room instanceof Room && room.canJoin) {
+			socket.join(room.id);
+		} else {
+			const id = Room.generateId();
+			io.rooms[id] = "public";
+			socket.join(id);
+		}
+	});
+
 	socket.on("room-join",(id,callback) => {
-		if (io.rooms[id] instanceof Room && io.rooms[id].usersCount < Room.maxUsersCount) {
+		const room = io.rooms[id];
+
+		if (room instanceof Room && room.canJoin) {
 			socket.join(id);
 		} else {
 			callback();
@@ -232,17 +269,6 @@ io.on("connection",(socket) => {
 	});
 
 
-	socket.on("game-load",(callback) => {
-		const room = io.rooms[socket.room];
-
-		if (room instanceof Room && room.owner === socket.id && room.status === "waiting") {
-			room.status = "loading";
-			io.to(room.id).emit("game-load");
-		} else if (room.status !== "waiting") {
-			callback();
-		}
-	});
-
 
 	socket.on("rooms-get",(callback) => {
 		let rooms = [];
@@ -251,6 +277,7 @@ io.on("connection",(socket) => {
 
 		callback(rooms);
 	});
+
 
 
 	socket.ping = () => {

@@ -9,6 +9,8 @@ const Storage = window.localStorage || window.sessionStorage || {
 	setItem: (id,value) => Storage.data[id] = value
 };
 
+
+
 window.start = () => {
 	const socket = io(location.hostname === "localhost" ? "ws://localhost:8080" : `${location.protocol === "https:" ? "wss" : "ws"}://${server}.ws.multy.wixonic.fr`,{
 		path: "/",
@@ -23,9 +25,9 @@ window.start = () => {
 			fatal: (e="Unknown error") => {
 				const main = document.querySelector("main");
 
-				if (main.getAttribute("status") !== "fata-error") {
+				if (main.getAttribute("status") !== "fatal-error") {
 					main.setAttribute("status","fatal-error");
-					main.innerHTML = `<h1>Fatal error</h1><code>${e}</code><p>A fatal error occured. Don't worry, <b>check your internet connection</b>, and <b>reload</b> this page.</p><p>If it is recurrent, please <a href="mailto:contact@wixonic.fr?${encodeURI(`subject=[BUG] Fatal Error&body=Fatal Error Report\n\rID: ${socket.id || "Not connected"}\r\nMessage: ${e}\r\nDate: ${(new Date()).toISOString()}\r\nAdditional datas from user: `)}">report it</a>, or try to <b>change server</b>.</p><button id="reload">Reload page</button>`;
+					main.innerHTML = `<h1>Fatal error</h1><code>${e}</code><p>An error occured. Check your <b>internet connection</b>, and <b>reload</b> this page.</p><p>If it is recurrent, please <a href="mailto:contact@wixonic.fr?${encodeURI(`subject=[BUG] Fatal Error&body=Fatal Error Report\n\rID: ${socket.id || "Not connected"}\r\nMessage: ${e}\r\nDate: ${(new Date()).toISOString()}\r\nAdditional datas from user: `)}">report it</a>, or try to <b>change server</b>.</p><button id="reload">Reload page</button>`;
 					document.getElementById("reload").addEventListener("click",() => location.reload());
 				}
 				
@@ -35,6 +37,8 @@ window.start = () => {
 
 
 		home: () => {
+			Display.currentDisplay = Display.home;
+
 			const main = document.querySelector("main");
 			main.setAttribute("status","home");
 			main.innerHTML = "";
@@ -108,7 +112,7 @@ window.start = () => {
 								rooms.sort((a,b) => b.usersCount - a.usersCount);
 								rooms.forEach((room) => {
 									room.el = document.createElement("room");
-									room.el.innerHTML = `<id>${room.id}</id><count>${room.usersCount}/${meta.rooms.maxUsersCount}</count>`;
+									room.el.innerHTML = `<id>${room.id}</id><count>${room.usersCount}/${socket.meta.rooms.maxUsersCount}</count>`;
 									room.el.addEventListener("click",() => joinRoomInput.value = room.id);
 									joinRoomList.append(room.el);
 								});
@@ -175,22 +179,32 @@ window.start = () => {
 			}
 		},
 
-		load: (world) => {
-			world = Worlds[world];
+		load: (w) => {
+			Display.currentDisplay = () => Display.load(w);
 
 			const main = document.querySelector("main");
 			main.setAttribute("status","loading");
 			main.innerHTML = "<loader></loader><text>Loading<dot>.</dot><dot>.</dot><dot>.</dot></text>";
 
-			if (world instanceof World) {
-				main.innerHTML += `<world><name>${world.name}</name><description>${world.description}</description></world>`;
-			}
+			import(`./worlds/${w}/meta.js`)
+			.then((worldMeta) => {
+				main.innerHTML += `<world><name>${worldMeta.name}</name><description>${worldMeta.description}</description></world>`;
+
+				import(`./worlds/${w}/run.js`)
+				.then((run) => {
+					window.world = run;
+
+					console.log(world);
+				}).catch(() => Display.errors.fatal("World datas not found"));
+			}).catch(() => Display.errors.fatal("World metadatas not found"));
 		},
 
-		room: (room) => {
+		room: () => {
+			Display.currentDisplay = Display.room;
+
 			const main = document.querySelector("main");
 			main.setAttribute("status","room");
-			main.innerHTML = `<id>${room.id}</id>`;
+			main.innerHTML = `<id>${socket.room.id}</id>`;
 
 			const usersList = document.createElement("list");
 			usersList.innerHTML = "Loading...";
@@ -216,40 +230,8 @@ window.start = () => {
 			
 			main.append(roomChat);
 			
-			const options = document.createElement("options");
-
-				if (room.users[0].id === socket.id) {
-					const startButton = document.createElement("button");
-					startButton.id = "start";
-					startButton.innerHTML = `<i class="fa-solid fa-play"></i> Start`;
-					startButton.addEventListener("click",() => {
-						if (!startButton.classList.contains("disabled")) {
-							startButton.classList.add("disabled");
-							socket.emit("game-start",() => startButton.classList.remove("disabled"));
-						}
-					});
-					options.append(startButton);
-				}
-
-				const modeSwitch = document.createElement("switch");
-				modeSwitch.classList.toggle("active",room.mode === "public");
-				modeSwitch.innerHTML = "<item>Private</item><item>Public</item><cache></cache>";
-
-				if (room.users[0].id === socket.id) {
-					modeSwitch.classList.add("canclick");
-					modeSwitch.addEventListener("click",() => {
-						if (!modeSwitch.classList.contains("disabled")) {
-							modeSwitch.classList.add("disabled");
-							socket.emit("room-change-mode",modeSwitch.classList.contains("active"),() => modeSwitch.classList.remove("disabled"));
-						}
-					});
-				}
-
-				options.append(modeSwitch);
-
-			main.append(options);
-
-			Display.roomUsers(room.users);
+			Display.roomOwner(socket.room.users[0].id === socket.id);
+			Display.roomUsers();
 		},
 
 		roomMode (mode) {
@@ -258,16 +240,54 @@ window.start = () => {
 			}
 		},
 
-		roomUsers (users) {
+		roomOwner (is) {
+			const options = document.querySelector("main options") || document.createElement("options");
+			options.innerHTML = "";
+
+			if (!document.querySelector("main options")) {
+				document.querySelector("main").append(options);
+			}
+
+			if (is) {
+				const startButton = document.createElement("button");
+				startButton.id = "start";
+				startButton.innerHTML = `<i class="fa-solid fa-play"></i> Start`;
+				startButton.addEventListener("click",() => {
+					if (!startButton.classList.contains("disabled")) {
+						startButton.classList.add("disabled");
+						socket.emit("game-start",() => startButton.classList.remove("disabled"));
+					}
+				});
+				options.append(startButton);
+			}
+
+			const modeSwitch = document.createElement("switch");
+			modeSwitch.classList.toggle("active",socket.room.mode === "public");
+			modeSwitch.innerHTML = "<item>Private</item><item>Public</item><cache></cache>";
+
+			if (is) {
+				modeSwitch.classList.add("canclick");
+				modeSwitch.addEventListener("click",() => {
+					if (!modeSwitch.classList.contains("disabled")) {
+						modeSwitch.classList.add("disabled");
+						socket.emit("room-change-mode",modeSwitch.classList.contains("active"),() => modeSwitch.classList.remove("disabled"));
+					}
+				});
+			}
+
+			options.append(modeSwitch);
+		},
+
+		roomUsers () {
 			if (document.querySelector("main").getAttribute("status") === "room") {
 				const container = document.querySelector("main list");
 				container.innerHTML = "";
 
-				for (let user of users) {
+				for (let user of socket.room.users) {
 					const userEl = document.createElement("user");
 					userEl.id = user.id;
 					userEl.setAttribute("owner",user.owner);
-					userEl.innerHTML = `${user.owner ? `<icon><i class="fa-regular fa-crown"></i></icon>` : ""}<name>${user.name}</name>${users[0].id === socket.id && user.id !== socket.id ? `<button class="kick">Kick</button>` : ""}${user.id !== socket.id ? `<ping>${user.ping} ms</ping>` : ""}`;
+					userEl.innerHTML = `${user.owner ? `<icon><i class="fa-regular fa-crown"></i></icon>` : ""}<name>${user.name}</name>${socket.room.users[0].id === socket.id && user.id !== socket.id ? `<button class="kick">Kick</button>` : ""}${user.id !== socket.id ? `<ping>${user.ping} ms</ping>` : ""}`;
 					container.append(userEl);
 				}
 
@@ -282,14 +302,11 @@ window.start = () => {
 		},
 
 
-		id: (id) => {
-			document.querySelector("id").innerHTML = id || "";
-		},
+		id: () => document.querySelector("id").innerHTML = socket.id || "",
 
-		ping: (ping) => {
-			document.querySelector("ping").innerHTML = `${ping || ".."} ms`;
-		}
+		ping: () => document.querySelector("ping").innerHTML = `${socket.ping || ".."} ms`
 	};
+
 
 
 	socket.on("ask",(data,answer) => {
@@ -308,7 +325,22 @@ window.start = () => {
 	socket.on("game-load",Display.load);
 
 
-	socket.on("room",Display.room);
+	socket.on("room",(room) => {
+		socket.room = room;
+		Display.room();
+	});
+
+	socket.on("room-kicked",(by) => {
+		delete socket.room;
+		Display.home();
+		alert(`You got kicked by ${by}`);
+	});
+
+	socket.on("room-leaved",() => {
+		delete socket.room;
+		Display.home();
+	});
+
 	socket.on("room-mode-changed",Display.roomMode);
 
 	socket.on("room-message",(message) => Display.message({
@@ -317,6 +349,8 @@ window.start = () => {
 		style: message.style,
 		type: message.author.id === socket.id ? "self" : "user"
 	}));
+
+	socket.on("room-owner",Display.roomOwner);
 
 	socket.on("room-user-joined",(user) => Display.message({
 		content: `${user} just joined`,
@@ -336,29 +370,36 @@ window.start = () => {
 		type: "system"
 	}));
 
-	socket.on("room-leaved",Display.home);
 
-	socket.on("room-kicked",(by) => {
-		Display.home();
-		alert(`You got kicked by ${by}`);
-	});
-
-
-	socket.on("meta",(meta) => window.meta = meta);
+	socket.on("meta",(meta) => socket.meta = meta);
 
 	socket.on("ping",(ping,roomUsers,callback) => {
-		Display.ping(ping);
-		Display.roomUsers(roomUsers);
+		socket.ping = ping;
+		Display.ping();
+
+		if (socket.room && roomUsers) {
+			socket.room.users = roomUsers;
+			Display.roomUsers();
+		}
+
 		callback();
 	});
 
 
-	socket.on("connect",() => {
+	socket.once("connect",() => {
 		Display.home();
-		Display.id(socket.id);
+		Display.id();
 	});
 
-	socket.on("disconnect",(reason) => socket.on("",() => Display.errors.fatal(`Disconnected from server "${server}": ${reason}`)));
+	socket.io.on("reconnect",() => {
+		Display.id();
+		Display.ping();
+		
+		Display[Display.currentDisplay]();
+	});
 
+	socket.io.on("reconnect_attempt",reset);
+	socket.io.on("reconnect_failed",(reason) => Display.errors.fatal(`Disconnected from server "${server}": ${reason.message}`));
+	socket.on("disconnect",(reason) => Display.errors.fatal(`Disconnected from server "${server}": ${reason}`));
 	socket.on("connect_error",() => Display.errors.fatal(`Server "${server}" unavailable`));
 };
