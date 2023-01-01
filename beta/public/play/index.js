@@ -13,7 +13,7 @@ window.start = () => {
 	const socket = io(location.hostname === "localhost" ? "ws://localhost:8080" : `${location.protocol === "https:" ? "wss" : "ws"}://${server}.ws.multy.wixonic.fr`,{
 		path: "/",
 		rememberUpgrade: true,
-		timeout: 5000,
+		timeout: 10000,
 		transports: ["websocket"]
 	});
 
@@ -175,6 +175,18 @@ window.start = () => {
 			}
 		},
 
+		load: (world) => {
+			world = Worlds[world];
+
+			const main = document.querySelector("main");
+			main.setAttribute("status","loading");
+			main.innerHTML = "<loader></loader><text>Loading<dot>.</dot><dot>.</dot><dot>.</dot></text>";
+
+			if (world instanceof World) {
+				main.innerHTML += `<world><name>${world.name}</name><description>${world.description}</description></world>`;
+			}
+		},
+
 		room: (room) => {
 			const main = document.querySelector("main");
 			main.setAttribute("status","room");
@@ -292,6 +304,10 @@ window.start = () => {
 		}
 	});
 
+
+	socket.on("game-load",Display.load);
+
+
 	socket.on("room",Display.room);
 	socket.on("room-mode-changed",Display.roomMode);
 
@@ -340,14 +356,9 @@ window.start = () => {
 	socket.on("connect",() => {
 		Display.home();
 		Display.id(socket.id);
-		Display.ping();
 	});
 
-	socket.on("disconnect",(reason) => {
-		Display.errors.fatal(`Disconnected from server "${server}": ${reason}`);
-	});
+	socket.on("disconnect",(reason) => socket.on("",() => Display.errors.fatal(`Disconnected from server "${server}": ${reason}`)));
 
-	socket.on("connect_error",() => {
-		Display.errors.fatal(`Server "${server}" unavailable`);
-	});
+	socket.on("connect_error",() => Display.errors.fatal(`Server "${server}" unavailable`));
 };

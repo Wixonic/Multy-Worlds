@@ -12,3 +12,6 @@ firebase deploy --only=hosting:beta-multy-worlds
 # CLEAN
 gcloud storage rm gs://artifacts.multy-worlds.appspot.com/**
 gcloud storage rm gs://multy-worlds_cloudbuild/**
+
+# UPDATE CONFIG
+gcloud run services update SERVICE --concurrency=100 --cpu=2 --cpu-throttling --memory=512Mi --timeout=60m

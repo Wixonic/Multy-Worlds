@@ -3,11 +3,11 @@ const { FORBIDDEN_CHARS, PORT, VERSION } = require("./static.js");
 const server = require("http").createServer();
 const io = new (require("socket.io").Server)(server,{
 	connectTimeout: 5000,
-	pingInterval: 1000,
-	pingTimeout: 5000,
-	upgradeTimeout: 5000,
+	pingInterval: 5000,
+	pingTimeout: 10000,
+	upgradeTimeout: 10000,
 
-	maxHttpBufferSize: 1e3,
+	maxHttpBufferSize: 1e6,
 	path: "/",
 	serveClient: false,
 
@@ -232,12 +232,12 @@ io.on("connection",(socket) => {
 	});
 
 
-	socket.on("game-start",(callback) => {
+	socket.on("game-load",(callback) => {
 		const room = io.rooms[socket.room];
 
 		if (room instanceof Room && room.owner === socket.id && room.status === "waiting") {
-			room.status = "playing";
-			io.to(room.id).emit("game-start",/* mode */);
+			room.status = "loading";
+			io.to(room.id).emit("game-load");
 		} else if (room.status !== "waiting") {
 			callback();
 		}
@@ -262,5 +262,14 @@ io.on("connection",(socket) => {
 	socket.ping();
 });
 
+server.listen(PORT,() => console.info(`Server is listening on ${server.address().address}:${server.address().port} (${server.address().family})`));
 
-server.listen(PORT,() => console.info(`Server is listening on port ${PORT}`));
+process.on("SIGTERM",() => {
+	logger.info(`${pkg.name}: received SIGTERM`);
+	closeConnection();
+	logger.end();
+	logger.on("finish", () => {
+		console.log(`${pkg.name}: logs flushed`);
+		process.exit(0);
+	});
+});

@@ -75,7 +75,7 @@ main {
 
 
 
-main[status="loading"] {
+main[status="connecting"] {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
@@ -659,4 +659,9 @@ main[status="room"] options switch.active cache {
 	main[status="room"] options {
 		grid-row: 3;
 	}
+}
+
+
+main[status="loading"] {
+	
 }
