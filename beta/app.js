@@ -1,5 +1,5 @@
 const { FORBIDDEN_CHARS, PORT, VERSION } = require("./static.js");
-const { World, WorldList } = require("./worlds.js");
+const { World } = require("./worlds.js");
 
 const server = require("http").createServer();
 const io = new (require("socket.io").Server)(server,{
@@ -20,7 +20,7 @@ const io = new (require("socket.io").Server)(server,{
 	}
 });
 
-
+server.listen(PORT,() => console.info(`Listening on ${server.address().address}:${server.address().port} (${server.address().family})`));
 
 io.rooms = {};
 Object.defineProperty(io,"publicRooms",{
@@ -96,9 +96,16 @@ class Room {
 
 
 
+io.of("/").adapter.on("create-room",(id) => {
+	if (id && io.rooms[id] instanceof Room) {
+		console.log(`R-${id}: Created`);
+	}
+});
+
 io.of("/").adapter.on("delete-room",(id) => {
 	if (io.rooms[id] instanceof Room) {
 		delete io.rooms[id];
+		console.log(`R-${id}: Deleted`);
 	}
 });
 
@@ -124,6 +131,7 @@ io.of("/").adapter.on("join-room",(id,uid) => {
 
 			user.room = id;
 			user.emit("room",io.rooms[id].export());
+			console.log(`R-${id}: U-${uid} joined`);
 		}
 	}
 });
@@ -133,15 +141,17 @@ io.of("/").adapter.on("leave-room",(id,uid) => {
 		const userIndex = io.rooms[id].users.indexOf(uid);
 		const user = io.of("/").sockets.get(uid);
 		io.rooms[id].users.splice(userIndex,1);
-		user.to(id).emit("room-user-leaved",user.name);
+		io.to(id).except(uid).emit("room-user-leaved",user.name);
 		delete user.room;
-		user.emit("leaved");
+		user.emit("room-leaved");
+		console.log(`R-${id}: U-${uid} leaved`);
 
 		if (userIndex === 0) {
 			const newOwner = io.of("/").sockets.get(io.rooms[id].users[0]);
 
 			if (newOwner) {
 				newOwner.emit("room-owner",true);
+				console.log(`R-${id}: U-${newOwner.id} is the new owner`);
 			}
 		}
 	};
@@ -149,9 +159,13 @@ io.of("/").adapter.on("leave-room",(id,uid) => {
 
 
 io.on("connection",(socket) => {
+	console.info(`U-${socket.id}: Connection`);
+
+	socket.on("disconnect",() => console.warn(`U-${socket.id}: Disconnection`));
+
 	socket.emit("ask","version",(version) => {
 		if (version !== VERSION) {
-			console.error(`${socket.id}: Running on "${version}", expected "${VERSION}"`);
+			console.error(`U-${socket.id}: Running on "${version}", expected "${VERSION}"`);
 			socket.disconnect(true);
 		}
 	});
@@ -174,18 +188,54 @@ io.on("connection",(socket) => {
 
 			socket.name = name;
 			callback(name);
+			console.log(`U-${socket.id}: Changed name`);
 		}
 	});
 
 
 
 	socket.on("game-start",(callback) => {
-		const room = io.rooms[socket.room];
-
-		if (room instanceof Room && room.owner === socket.id && room.status === "waiting") {
+		if (io.rooms[socket.room] instanceof Room && io.rooms[socket.room].owner === socket.id && io.rooms[socket.room].status === "waiting") {
 			io.rooms[socket.room].status = "loading";
-			io.to(room.id).emit("game-load",WorldList[Math.floor(Math.random() * WorldList.length)]);
-		} else if (room.status !== "waiting") {
+
+			const world = World();
+
+			let ready = 0;
+
+			const check = () => {
+				if (io.rooms[socket.room] instanceof Room && world) {
+					if (ready === io.rooms[socket.room].usersCount) {
+						io.to(socket.room).emit("game-start");
+						world.start({
+							broadcast: io.in(socket.room).volatile,
+							get room () {
+								return io.rooms[socket.room];
+							},
+							get sockets () {
+								return io.in(socket.room).fetchSockets();
+							}
+						});
+					}
+				}
+			};
+
+			io.rooms[socket.room].users.forEach((uid) => {
+				const user = io.of("/").sockets.get(uid);
+
+				const timeout = setTimeout(() => {
+					user.leave(socket.room);
+					check();
+				},10000);
+
+				user.emit("game-load",world.id,() => {
+					clearTimeout(timeout);
+					ready++;
+					check();
+				});
+			});
+
+			console.log(`R-${socket.room}: Started world "${world.id}"`);
+		} else if (io.rooms[socket.room].status !== "waiting") {
 			callback();
 		}
 	});
@@ -193,12 +243,11 @@ io.on("connection",(socket) => {
 
 
 	socket.on("room-change-mode",(mode,callback) => {
-		const room = io.rooms[socket.room];
-
-		if (room instanceof Room && room.owner === socket.id) {
-			room.mode = mode ? "private" : "public";
-			io.to(room.id).emit("room-mode-changed",mode);
+		if (io.rooms[socket.room] instanceof Room && io.rooms[socket.room].owner === socket.id) {
+			io.rooms[socket.room].mode = mode ? "private" : "public";
+			io.to(io.rooms[socket.room].id).emit("room-mode-changed",mode);
 			callback();
+			console.log(`R-${socket.room}: Changed mode (${mode ? "private" : "public"})`);
 		}
 	});
 
@@ -265,6 +314,8 @@ io.on("connection",(socket) => {
 				type: "user",
 				style: room.owner === socket.id ? "owner" : "default"
 			});
+
+			console.log(`R-${socket.room}: Message`);
 		}
 	});
 
@@ -272,10 +323,9 @@ io.on("connection",(socket) => {
 
 	socket.on("rooms-get",(callback) => {
 		let rooms = [];
-
 		io.publicRooms.forEach((room) => rooms.push(room.lightExport()));
-
 		callback(rooms);
+		console.log(`U-${socket.id}: Getting public rooms`);
 	});
 
 
@@ -288,8 +338,6 @@ io.on("connection",(socket) => {
 	};
 	socket.ping();
 });
-
-server.listen(PORT,() => console.info(`Server is listening on ${server.address().address}:${server.address().port} (${server.address().family})`));
 
 process.on("SIGTERM",() => {
 	logger.info(`${pkg.name}: received SIGTERM`);

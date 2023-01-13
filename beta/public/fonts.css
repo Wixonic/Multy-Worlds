@@ -1,9 +1,14 @@
 @font-face {
+	font-family: "Digital 7";
+	src: url("https://assets.wixonic.fr/fonts/digital-7.ttf") format("truetype");
+}
+
+@font-face {
 	font-family: "Fira Code";
-	src: url("fira-code.ttf") format("truetype");
+	src: url("https://assets.wixonic.fr/fonts/fira-code.ttf") format("truetype");
 }
 
 @font-face {
 	font-family: "Inter";
-	src: url("inter.ttf") format("truetype");
+	src: url("https://assets.wixonic.fr/fonts/inter.ttf") format("truetype");
 }

@@ -1,5 +1,40 @@
 @import url("../main.css");
 
+button#actx {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	position: fixed;
+	top: 0.2rem;
+	left: 0.2rem;
+
+	width: 3rem;
+	height: 3rem;
+	
+	background: #000;
+
+	color: #CCC;
+	font-size: 1.5rem;
+
+	border-radius: 3rem;
+
+	margin: 0;
+	padding: 0;
+
+	animation: actx 0.8s infinite linear alternate;
+
+	z-index: 4;
+}
+
+@keyframes actx {
+	to {opacity: 0}
+}
+
+button#actx[state="running"] {
+	display: none;
+}
+
 header {
 	display: flex;
 	justify-content: center;
@@ -73,6 +108,26 @@ main {
 	margin-top: 3rem;
 }
 
+icon i {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	width: 1em;
+	height: 1em;
+
+	background: #FFF;
+
+	color: #000;
+	font-size: 0.8em;
+	font-style: normal;
+
+	border: none;
+	border-radius: 1rem;
+
+	margin: auto;
+}
+
 
 
 main[status="connecting"] {
@@ -95,6 +150,83 @@ main[status="connecting"] {
 	overflow-y: scroll;
 
 	z-index: 3;
+}
+
+main[status="connecting"] loader {
+	display: grid;
+	grid-auto-flow: column dense;
+	gap: 0.4rem;
+}
+
+main[status="connecting"] loader icon {
+	--opacity: 0.25;
+	
+	display: block;
+	
+	opacity: var(--opacity);
+	
+	animation: connecting 2s linear infinite;
+}
+
+main[status="connecting"] loader icon:last-child {
+	animation-delay: 1s;
+}
+
+main[status="connecting"] loader dot {
+	--opacity: 0.1;
+
+	display: block;
+	
+	width: 0.5rem;
+	height: 0.5rem;
+	
+	background: #FFF;
+	
+	border-radius: 1rem;
+	
+	margin: auto;
+	
+	opacity: var(--opacity);
+	
+	animation: connecting-dot 2s linear infinite;
+}
+
+main[status="connecting"] loader dot:nth-child(3) {
+	animation: connecting 1s linear infinite 0.5s;
+}
+
+main[status="connecting"] loader dot:nth-child(4) {
+	animation-name: connecting-last-dot;
+}
+
+@keyframes connecting {
+	0%, 50% {
+		opacity: var(--opacity);
+	}
+	
+	12.5% {
+		opacity: 1
+	}
+}
+
+@keyframes connecting-dot {
+	12.5%, 25%, 87.5%, 100% {
+		opacity: var(--opacity);
+	}
+	
+	18.75%, 93.75% {
+		opacity: 1
+	}
+}
+
+@keyframes connecting-last-dot {
+	37.5%, 50%, 62.5%, 75% {
+		opacity: var(--opacity);
+	}
+	
+	43.75%, 70.75% {
+		opacity: 1
+	}
 }
 
 
@@ -663,5 +795,8 @@ main[status="room"] options switch.active cache {
 
 
 main[status="loading"] {
-	
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
 }

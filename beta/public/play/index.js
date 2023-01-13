@@ -10,13 +10,27 @@ const Storage = window.localStorage || window.sessionStorage || {
 };
 
 
+window.actx = new (window.webkitAudioContext || window.AudioContext)();
+
 
 window.start = () => {
-	const socket = io(location.hostname === "localhost" ? "ws://localhost:8080" : `${location.protocol === "https:" ? "wss" : "ws"}://${server}.ws.multy.wixonic.fr`,{
+	actx.button = document.createElement("button");
+	actx.addEventListener("statechange",() => actx.button.setAttribute("state",actx.state));
+	actx.button.id = "actx";
+	actx.button.setAttribute("state",actx.state);
+	actx.button.innerHTML = `<icon><i class="fa-solid fa-volume-slash"></i></icon>`;
+	actx.button.addEventListener("click",() => {
+		try {
+			actx.resume();
+		} catch {}
+	});
+	document.body.append(actx.button);
+	
+	window.socket = io(location.hostname === "localhost" ? "ws://localhost:8080" : `${location.protocol === "https:" ? "wss" : "ws"}://${server}.ws.multy.wixonic.fr`,{
 		path: "/",
 		rememberUpgrade: true,
 		timeout: 10000,
-		transports: ["websocket"]
+		transports: ["polling","websocket"]
 	});
 
 
@@ -59,7 +73,7 @@ window.start = () => {
 
 			const usernameEdit = document.createElement("icon");
 			usernameEdit.id = "editUsername";
-			usernameEdit.innerHTML = `<i class="fa-regular fa-pen"></i>`;
+			usernameEdit.innerHTML = `<i class="fa-regular fa-pen">?</i>`;
 			main.append(usernameEdit);
 
 			const roomSection = document.createElement("section");
@@ -174,120 +188,142 @@ window.start = () => {
 			const messageContainer = document.querySelector("chat messages container");
 			
 			if (messageContainer) {
-				messageContainer.innerHTML += `<message type="${message.type}" mode="${message.style}">${message.type === "user" ? `<author>${message.style === "owner" ? `<icon><i class="fa-regular fa-crown"></i></icon>` : ""}${message.author}</author>:` : ""}<content${message.type === "user" ? ` style="margin-left: 0.5rem;"` : ""}>${message.content}</content></message>`;
+				messageContainer.innerHTML += `<message type="${message.type}" mode="${message.style}">${message.type === "user" ? `<author>${message.style === "owner" ? `<icon><i class="fa-regular fa-crown">?</i></icon>` : ""}${message.author}</author>:` : ""}<content${message.type === "user" ? ` style="margin-left: 0.5rem;"` : ""}>${message.content}</content></message>`;
 				messageContainer.parentElement.scrollTo(0,messageContainer.clientHeight);
 			}
 		},
 
-		load: (w) => {
-			Display.currentDisplay = () => Display.load(w);
+		load: (w,callback) => {
+			Display.currentDisplay = () => Display.load(w,callback);
 
 			const main = document.querySelector("main");
 			main.setAttribute("status","loading");
-			main.innerHTML = "<loader></loader><text>Loading<dot>.</dot><dot>.</dot><dot>.</dot></text>";
+			main.innerHTML = `<icon><i class="fa-solid fa-spinner fa-pulse">?</i></icon>`;
 
 			import(`./worlds/${w}/meta.js`)
-			.then((worldMeta) => {
-				main.innerHTML += `<world><name>${worldMeta.name}</name><description>${worldMeta.description}</description></world>`;
+			.then((wme) => {
+				window.world = {
+					name: wme.name,
+					description: wme.description,
+					instructions: wme.instructions,
+					tags: wme.tags
+				};
 
-				import(`./worlds/${w}/run.js`)
-				.then((run) => {
-					window.world = run;
+				main.innerHTML += `<name>${world.name}</name><description>${world.description}</description><instructions>${world.instructions}</instructions>`;
 
-					console.log(world);
-				}).catch(() => Display.errors.fatal("World datas not found"));
-			}).catch(() => Display.errors.fatal("World metadatas not found"));
+				import(`./worlds/${w}/main.js`)
+				.then((wma) => {
+					world.run = wma.run;
+					world.setup = wma.setup;
+					wma.load().then(callback);
+				}).catch((e) => {
+					console.error(e);
+					Display.errors.fatal("World datas not found");
+				});
+			}).catch((e) => {
+				console.error(e);
+				Display.errors.fatal("World metadatas not found");
+			});
 		},
 
 		room: () => {
 			Display.currentDisplay = Display.room;
 
 			const main = document.querySelector("main");
-			main.setAttribute("status","room");
-			main.innerHTML = `<id>${socket.room.id}</id>`;
-
-			const usersList = document.createElement("list");
-			usersList.innerHTML = "Loading...";
-			main.append(usersList);
 			
-			const roomChat = document.createElement("chat");
+			if (main) {
+				main.setAttribute("status","room");
+				main.innerHTML = `<id>${socket.room.id}</id>`;
 
-				const roomChatMessages = document.createElement("messages");
-				roomChatMessages.innerHTML = "<container></container>";
-				roomChat.append(roomChatMessages);
+				const usersList = document.createElement("list");
+				usersList.innerHTML = "Loading...";
+				main.append(usersList);
+				
+				const roomChat = document.createElement("chat");
 
-				const roomChatInput = document.createElement("input");
-				roomChatInput.setAttribute("autocomplete","off");
-				roomChatInput.setAttribute("type","text");
-				roomChatInput.setAttribute("placeholder","Chat..");
-				roomChatInput.addEventListener("keydown",(e) => {
-					if (e.key === "Enter") {
-						socket.emit("room-message",roomChatInput.value);
-						roomChatInput.value = "";
-					}
-				});
-				roomChat.append(roomChatInput);
-			
-			main.append(roomChat);
-			
-			Display.roomOwner(socket.room.users[0].id === socket.id);
-			Display.roomUsers();
+					const roomChatMessages = document.createElement("messages");
+					roomChatMessages.innerHTML = "<container></container>";
+					roomChat.append(roomChatMessages);
+
+					const roomChatInput = document.createElement("input");
+					roomChatInput.setAttribute("autocomplete","off");
+					roomChatInput.setAttribute("type","text");
+					roomChatInput.setAttribute("placeholder","Chat..");
+					roomChatInput.addEventListener("keydown",(e) => {
+						if (e.key === "Enter") {
+							socket.emit("room-message",roomChatInput.value);
+							roomChatInput.value = "";
+						}
+					});
+					roomChat.append(roomChatInput);
+				
+				main.append(roomChat);
+				
+				Display.roomOwner(socket.room.users[0].id === socket.id);
+				Display.roomUsers();
+			}
 		},
 
 		roomMode (mode) {
-			if (document.querySelector("main options switch")) {
-				document.querySelector("main options switch").classList.toggle("active",!mode);
+			if (document.querySelector("main[status=room] options switch")) {
+				document.querySelector("main[status=room] options switch").classList.toggle("active",!mode);
 			}
 		},
 
 		roomOwner (is) {
-			const options = document.querySelector("main options") || document.createElement("options");
-			options.innerHTML = "";
+			const main = document.querySelector("main[status=room]");
 
-			if (!document.querySelector("main options")) {
-				document.querySelector("main").append(options);
+			if (main) {
+				const options = document.querySelector("main options") || document.createElement("options");
+				options.innerHTML = "";
+
+				if (!document.querySelector("main options")) {
+					main.append(options);
+				}
+
+				if (is) {
+					const startButton = document.createElement("button");
+					startButton.id = "start";
+					startButton.innerHTML = `<i class="fa-solid fa-play">?</i> Start`;
+					startButton.addEventListener("click",() => {
+						if (!startButton.classList.contains("disabled")) {
+							startButton.classList.add("disabled");
+							socket.emit("game-start",() => startButton.classList.remove("disabled"));
+						}
+					});
+					options.append(startButton);
+				}
+
+				const modeSwitch = document.createElement("switch");
+				modeSwitch.classList.toggle("active",socket.room.mode === "public");
+				modeSwitch.innerHTML = "<item>Private</item><item>Public</item><cache></cache>";
+
+				if (is) {
+					modeSwitch.classList.add("canclick");
+					modeSwitch.addEventListener("click",() => {
+						if (!modeSwitch.classList.contains("disabled")) {
+							modeSwitch.classList.add("disabled");
+							socket.emit("room-change-mode",modeSwitch.classList.contains("active"),() => modeSwitch.classList.remove("disabled"));
+						}
+					});
+				}
+
+				options.append(modeSwitch);
 			}
-
-			if (is) {
-				const startButton = document.createElement("button");
-				startButton.id = "start";
-				startButton.innerHTML = `<i class="fa-solid fa-play"></i> Start`;
-				startButton.addEventListener("click",() => {
-					if (!startButton.classList.contains("disabled")) {
-						startButton.classList.add("disabled");
-						socket.emit("game-start",() => startButton.classList.remove("disabled"));
-					}
-				});
-				options.append(startButton);
-			}
-
-			const modeSwitch = document.createElement("switch");
-			modeSwitch.classList.toggle("active",socket.room.mode === "public");
-			modeSwitch.innerHTML = "<item>Private</item><item>Public</item><cache></cache>";
-
-			if (is) {
-				modeSwitch.classList.add("canclick");
-				modeSwitch.addEventListener("click",() => {
-					if (!modeSwitch.classList.contains("disabled")) {
-						modeSwitch.classList.add("disabled");
-						socket.emit("room-change-mode",modeSwitch.classList.contains("active"),() => modeSwitch.classList.remove("disabled"));
-					}
-				});
-			}
-
-			options.append(modeSwitch);
 		},
 
 		roomUsers () {
-			if (document.querySelector("main").getAttribute("status") === "room") {
-				const container = document.querySelector("main list");
+			const main = document.querySelector("main[status=room]");
+
+			if (main) {
+				const container = document.querySelector("list");
 				container.innerHTML = "";
 
 				for (let user of socket.room.users) {
 					const userEl = document.createElement("user");
 					userEl.id = user.id;
 					userEl.setAttribute("owner",user.owner);
-					userEl.innerHTML = `${user.owner ? `<icon><i class="fa-regular fa-crown"></i></icon>` : ""}<name>${user.name}</name>${socket.room.users[0].id === socket.id && user.id !== socket.id ? `<button class="kick">Kick</button>` : ""}${user.id !== socket.id ? `<ping>${user.ping} ms</ping>` : ""}`;
+					userEl.innerHTML = `${user.owner ? `<icon><i class="fa-regular fa-crown">?</i></icon>` : ""}<name>${user.name}</name>${socket.room.users[0].id === socket.id && user.id !== socket.id ? `<button class="kick">Kick</button>` : ""}${user.id !== socket.id ? `<ping>${user.ping} ms</ping>` : ""}`;
 					container.append(userEl);
 				}
 
@@ -301,9 +337,19 @@ window.start = () => {
 			}
 		},
 
+		world: () => {
+			const main = document.querySelector("main");
+
+			if (main) {
+				main.setAttribute("status","world");
+				main.innerHTML = "";
+				world.setup(main);
+				world.run(socket);
+			}
+		},
+
 
 		id: () => document.querySelector("id").innerHTML = socket.id || "",
-
 		ping: () => document.querySelector("ping").innerHTML = `${socket.ping || ".."} ms`
 	};
 
@@ -323,6 +369,7 @@ window.start = () => {
 
 
 	socket.on("game-load",Display.load);
+	socket.on("game-start",Display.world);
 
 
 	socket.on("room",(room) => {
