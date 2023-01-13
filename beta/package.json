@@ -1,11 +1,6 @@
 {
 	"name": "multy-worlds",
 	"version": "0.1.0",
-	"description": "",
-	"keywords": [
-		"games",
-		"multiplayer"
-	],
 	"author": "Wixonic",
 	"license": "MIT",
 	"main": "app.js",
@@ -21,5 +16,9 @@
 	},
 	"engines": {
 		"node": ">=16"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Wixonic/Multy-Worlds.git"
 	}
 }
