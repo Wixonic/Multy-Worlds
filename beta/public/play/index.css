@@ -1,4 +1,5 @@
 @import url("../main.css");
+@import url("worlds.css");
 
 button#actx {
 	display: flex;

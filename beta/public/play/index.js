@@ -1,13 +1,7 @@
 import { io } from "https://cdn.socket.io/4.5.4/socket.io.esm.min.js";
+import { Storage } from "./utils.js";
 
 const VERSION = "0.1.0";
-
-const Storage = window.localStorage || window.sessionStorage || {
-	data: {},
-
-	getItem: (id) => Storage.data[id],
-	setItem: (id,value) => Storage.data[id] = value
-};
 
 
 window.actx = new (window.webkitAudioContext || window.AudioContext)();
@@ -377,12 +371,6 @@ window.start = () => {
 		Display.room();
 	});
 
-	socket.on("room-kicked",(by) => {
-		delete socket.room;
-		Display.home();
-		alert(`You got kicked by ${by}`);
-	});
-
 	socket.on("room-leaved",() => {
 		delete socket.room;
 		Display.home();
@@ -405,14 +393,8 @@ window.start = () => {
 		type: "system"
 	}));
 
-	socket.on("room-user-leaved",(user) => Display.message({
-		content: `${user} just leaved`,
-		style: "leave",
-		type: "system"
-	}));
-
-	socket.on("room-user-kicked",(user,by) => Display.message({
-		content: `${by} asked ${user} to leave (by force)`,
+	socket.on("room-user-leaved",(user,reason) => Display.message({
+		content: `${user} just leaved: ${reason}`,
 		style: "leave",
 		type: "system"
 	}));

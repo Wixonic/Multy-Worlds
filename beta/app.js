@@ -141,10 +141,10 @@ io.of("/").adapter.on("leave-room",(id,uid) => {
 		const userIndex = io.rooms[id].users.indexOf(uid);
 		const user = io.of("/").sockets.get(uid);
 		io.rooms[id].users.splice(userIndex,1);
-		io.to(id).except(uid).emit("room-user-leaved",user.name);
+		io.to(id).except(uid).emit("room-user-leaved",user.name,user.leaveReason);
 		delete user.room;
 		user.emit("room-leaved");
-		console.log(`R-${id}: U-${uid} leaved`);
+		console.log(`R-${id}: U-${uid} leaved: ${user.leaveReason || "an error occured"}`);
 
 		if (userIndex === 0) {
 			const newOwner = io.of("/").sockets.get(io.rooms[id].users[0]);
@@ -161,7 +161,10 @@ io.of("/").adapter.on("leave-room",(id,uid) => {
 io.on("connection",(socket) => {
 	console.info(`U-${socket.id}: Connection`);
 
-	socket.on("disconnect",() => console.warn(`U-${socket.id}: Disconnection`));
+	socket.on("disconnecting",(reason) => {
+		socket.leaveReason = "disconnected";
+		console.warn(`U-${socket.id}: Disconnection (${reason})`);
+	});
 
 	socket.emit("ask","version",(version) => {
 		if (version !== VERSION) {
@@ -207,7 +210,9 @@ io.on("connection",(socket) => {
 					if (ready === io.rooms[socket.room].usersCount) {
 						io.to(socket.room).emit("game-start");
 						world.start({
-							broadcast: io.in(socket.room).volatile,
+							get broadcast() {
+								return io.in(socket.room);
+							},
 							get room () {
 								return io.rooms[socket.room];
 							},
@@ -223,6 +228,7 @@ io.on("connection",(socket) => {
 				const user = io.of("/").sockets.get(uid);
 
 				const timeout = setTimeout(() => {
+					socket.leaveReason = "failed to load world";
 					user.leave(socket.room);
 					check();
 				},10000);
@@ -282,7 +288,10 @@ io.on("connection",(socket) => {
 		}
 	});
 
-	socket.on("room-leave",() => socket.leave(socket.room));
+	socket.on("room-leave",() => {
+		socket.leaveReason = "clicked on the button";
+		socket.leave(socket.room);
+	});
 
 	socket.on("room-kick",(uid,callback) => {
 		const room = io.rooms[socket.room];
@@ -290,7 +299,7 @@ io.on("connection",(socket) => {
 
 		if (room instanceof Room && room.owner === socket.id && room.users.includes(uid)) {
 			io.to(room.id).except(uid).emit("room-user-kicked",user.name || user.id,socket.name || socket.id);
-			user.emit("room-kicked",socket.name || socket.id);
+			user.leaveReason = `kicked by ${socket.name || socket.id}`;
 			user.leave(socket.room);
 		} else {
 			callback();

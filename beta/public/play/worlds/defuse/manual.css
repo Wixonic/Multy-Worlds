@@ -1,0 +1,61 @@
+@import url("/main.css");
+
+:root {
+	--max-width: 30rem;
+}
+
+body {
+	display: initial!important;
+}
+
+h1,
+h2,
+h3 {
+	display: block;
+
+	text-align: center;
+}
+
+hr {
+	display: block;
+
+	width: 100%;
+	max-width: var(--max-width);
+	height: 0.1rem;
+
+	background: #AAA;
+
+	border: none;
+	border-radius: 1rem;
+
+	margin: 1rem auto;
+}
+
+p {
+	display: block;
+
+	width: fit-content;
+	max-width: var(--max-width);
+	
+	margin: 0.5rem auto;
+}
+
+list {
+	display: block;
+
+	width: fit-content;
+	max-width: var(--max-width);
+	margin: 0.5rem auto;
+}
+
+el {
+	display: block;
+}
+
+el::before {
+	content: "-";
+
+	display: inline-block;
+
+	width: 1rem;
+}

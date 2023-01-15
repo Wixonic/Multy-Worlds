@@ -13,9 +13,23 @@
 			"destination": "https://beta.multy.wixonic.fr",
 			"source": "/beta",
 			"type": 301
+		}],
+		"rewrites": [{
+			"destination": "/play/worlds/defuse/manual.html",
+			"source": "/worlds/defuse/"
+		},{
+			"destination": "/play/worlds/defuse/manual.css",
+			"source": "/worlds/defuse/manual.css"
 		}]
 	},{
 		"public": "beta/public",
-		"site": "beta-multy-worlds"
+		"site": "beta-multy-worlds",
+		"rewrites": [{
+			"destination": "/play/worlds/defuse/manual.html",
+			"source": "/worlds/defuse/"
+		},{
+			"destination": "/play/worlds/defuse/manual.css",
+			"source": "/worlds/defuse/manual.css"
+		}]
 	}]
 }

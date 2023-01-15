@@ -25,6 +25,8 @@
 	margin: 0;
 	padding: 0;
 
+	box-sizing: border-box;
+
 	overflow: hidden;
 }
 
@@ -61,6 +63,24 @@ h1 {
 	
 	margin-top: 0.3rem;
 	margin-bottom: 0.6rem;
+}
+
+h2 {
+	font-size: 1.3rem;
+	font-weight: bold;
+	font-weight: 750;
+	
+	margin-top: 0.2rem;
+	margin-bottom: 0.4rem;
+}
+
+h3 {
+	font-size: 1.1rem;
+	font-weight: bold;
+	font-weight: 750;
+	
+	margin-top: 0.2rem;
+	margin-bottom: 0.4rem;
 }
 
 b {

@@ -1,0 +1,244 @@
+bomb {
+	--size: min(100vw - 0.5rem,100vh - 3.5rem);
+
+	display: none;
+	grid-template-columns: repeat(3,calc(45% / 3)) 10% 45%;
+	grid-template-rows: repeat(3,calc(45% / 3)) 10% repeat(3,calc(45% / 3));
+	grid-auto-flow:	column dense;
+
+	position: fixed;
+	top: calc(max(0px,(50vh - 1.5rem) - 50vw) + 3rem);
+	left: calc(max(0px,50vw - (50vh - 1.5rem)));
+
+	width: calc(var(--size));
+	height: calc(var(--size));
+
+	background: #001;
+
+	border: 0.1rem solid #889;
+	border-radius: 0.5rem;
+
+	padding: 2rem;
+}
+
+bomb[color="white"] {
+	background: #AAA;
+}
+
+bomb[color="blue"] {
+	background: #03A;
+}
+
+bomb[color="red"] {
+	background: #C00;
+}
+
+bomb.active {
+	display: grid;
+}
+
+bomb > led {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	width: 100%;
+	height: 100%;
+}
+
+bomb > led.middle {
+	grid-column: 4;
+	grid-row: 4;
+}
+
+bomb > led > led {
+	display: block;
+
+	width: calc(var(--size) / 50);
+	height: calc(var(--size) / 50);
+
+	background: #200;
+
+	border: 0.1rem solid #889;
+	border-radius: 50%;
+}
+
+bomb > led.middle > led {
+	width: calc(var(--size) / 30);
+	height: calc(var(--size) / 30);
+
+	border-radius: 25%;
+}
+
+bomb > wires,
+bomb > keypad,
+bomb > bigbutton {
+	opacity: 0.75;
+}
+
+bomb > wires.active,
+bomb > keypad.active,
+bomb > bigbutton.active {
+	opacity: 1;
+}
+
+bomb > wires {
+	grid-column: 1 / 4;
+	grid-row: 1 / 4;
+
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+
+	width: 100%;
+	height: min-content;
+
+	background: #22222A;
+
+	border: 0.1rem solid #889;
+	border-radius: 0.5rem;
+
+	box-shadow: inset 0 0 0.1rem #000,
+				inset 0 0 0.2rem #000,
+				inset 0 0 0.3rem #000,
+				inset 0 0 0.4rem #000,
+				inset 0 0 0.5rem #000;
+	
+	margin: auto;
+}
+
+bomb > wires > wire {
+	--background: linear-gradient(0deg,#02C,#06F,#02C);
+
+	display: block;
+
+	background: var(--background);
+
+	width: 100%;
+	height: 1rem;
+	
+	margin: 1rem auto;
+}
+
+bomb > wires > wire.clicked {
+	background: linear-gradient(90deg,transparent,transparent 45%,#C80 45.01%, #C80 46%, #22222A 46.01%,#22222A 53.99%,#C80 54%,#C80 54.99%,transparent 55%,transparent), var(--background);
+}
+
+bomb > wires > wire[type="1"] {
+	--background: linear-gradient(0deg,#C00,#F00,#C00);
+}
+
+bomb > wires > wire[type="2"] {
+	--background: linear-gradient(0deg,#AA0,#FF0,#AA0);
+}
+
+bomb > keypad {
+	grid-column: 1 / 4;
+	grid-row: 5 / 9;
+
+	background: orange;
+}
+
+bomb > bigbutton {
+	grid-column: 5;
+	grid-row: 5 / 9;
+
+	background: orange;
+}
+
+bomb > timercontainer {
+	grid-column: 5;
+	grid-row: 1 / 4;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+bomb > timercontainer > timer {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
+	background: #000;
+
+	color: #F00;
+	font-family: "Digital 7";
+	font-size: min(10vw,10vh);
+
+	border: 0.1rem solid #889;
+	border-radius: 0.3em;
+
+	padding: 0.2em 0.5em;
+
+	overflow: hidden;
+}
+
+manual {
+	--manual-size: 35rem;
+
+	display: grid;
+	grid-template-columns: 1fr 2rem;
+	grid-template-rows: 100%;
+
+	position: fixed;
+	top: 3rem;
+	left: 0;
+
+	width: var(--manual-size);
+	height: var(--size);
+
+	transform: translateX(calc(2rem - 100%));
+}
+
+manual.open {
+	transform: translateX(0);
+}
+
+manual > iframe {
+	grid-column: 1;
+
+	display: block;
+
+	width: 100%;
+	height: 100%;
+
+	background: none;
+
+	border: none;
+}
+
+manual > button {
+	grid-column: 2;
+
+	display: block;
+
+	width: 2rem;
+	height: var(--size);
+
+	background: #04C;
+
+	font-size: 1.5rem;
+
+	border-radius: 0 1rem 1rem 0;
+
+	margin: 0;
+	padding: 0;
+}
+
+manual > button:hover {
+	background: #06F;
+
+	transition: background-color 0.2s;
+}
+
+manual > button > icon {
+	display: block;
+
+	transition: transform 0.3s ease-in-out;
+}
+
+manual.open > button > icon {
+	transform: rotateY(180deg);
+}
