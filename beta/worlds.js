@@ -3,7 +3,7 @@ const Worlds = {
 
 	"defuse": {
 		id: "defuse",
-		start: async (datas) => {
+		start: async (datas,endWorld) => {
 			const database = {
 				start: Date.now() + 5000,
 				end: 0,
@@ -11,13 +11,29 @@ const Worlds = {
 				scores: {}
 			};
 
-			const private = {};
+			const private = {
+				endTimeout: null
+			};
 
 			database.end = database.start + 120000;
 
 			const sockets = await datas.sockets;
 
-			sockets.forEach((socket) => {
+			const end = () => {
+				for (let socket of sockets) {
+					if (database.scores[socket.id].finished) {
+						socket.emit("game-end");
+					} else {
+						database.scores[socket.id].lifes = 0;
+						socket.emit("game-boom");
+						socket.removeAllListeners("game-check");
+					}
+				}
+				
+				endWorld();
+			};
+
+			for (let socket of sockets) {
 				database.scores[socket.id] = {
 					finished: false,
 					lifes: 2,
@@ -28,6 +44,17 @@ const Worlds = {
 				private[socket.id] = {
 					bomb: {
 						color: ["black","white","blue","red"][Math.floor(Math.random() * 4)]
+					},
+
+					button: {
+						answer: null,
+						color: ["black","white","blue","red","green","yellow"][Math.floor(Math.random() * 6)],
+						text: ["Boom","Defuse","Push"][Math.floor(Math.random() * 3)]
+					},
+
+					keypad: {
+						answer: null,
+						number: Math.floor(Math.random() * 10)
 					},
 
 					wires: {
@@ -41,146 +68,280 @@ const Worlds = {
 					private[socket.id].wires.types[x] = Math.floor(Math.random() * 3);
 				}
 
-				const types = private[socket.id].wires.types;
-				let answer;
-				if (private[socket.id].wires.count === 3) {
-					if (private[socket.id].bomb.color === "white" || private[socket.id].bomb.color === "red") {
+				const bombColor = private[socket.id].bomb.color;
+				const buttonColor = private[socket.id].button.color;
+				const buttonText = private[socket.id].button.text;
+				const wiresCount = private[socket.id].wires.count;
+				const wiresTypes = private[socket.id].wires.types;
+
+				let buttonAnswer, keypadAnswer, wiresAnswer;
+
+				switch (buttonColor) {
+					case "black":
+						switch (buttonText) {
+							case "Boom":
+								buttonAnswer = 0;
+								break;
+
+							case "Defuse":
+								buttonAnswer = 1;
+								break;
+							
+							case "Push":
+								buttonAnswer = 0;
+								break;
+						}
+						break;
+					
+					case "white":
+						switch (buttonText) {
+							case "Boom":
+								buttonAnswer = 1;
+								break;
+
+							case "Defuse":
+								buttonAnswer = 1;
+								break;
+							
+							case "Push":
+								buttonAnswer = 0;
+								break;
+						}
+						break;
+					
+					case "blue":
+						switch (buttonText) {
+							case "Boom":
+								buttonAnswer = 0;
+								break;
+
+							case "Defuse":
+								buttonAnswer = 0;
+								break;
+							
+							case "Push":
+								buttonAnswer = 1;
+								break;
+						}
+						break;
+					
+					case "red":
+						switch (buttonText) {
+							case "Boom":
+								buttonAnswer = 1;
+								break;
+
+							case "Defuse":
+								buttonAnswer = 0;
+								break;
+							
+							case "Push":
+								buttonAnswer = 1;
+								break;
+						}
+						break;
+					
+					case "green":
+						switch (buttonText) {
+							case "Boom":
+								buttonAnswer = 0;
+								break;
+
+							case "Defuse":
+								buttonAnswer = 1;
+								break;
+							
+							case "Push":
+								buttonAnswer = 1;
+								break;
+						}
+						break;
+					
+					case "yellow":
+						switch (buttonText) {
+							case "Boom":
+								buttonAnswer = 1;
+								break;
+
+							case "Defuse":
+								buttonAnswer = 0;
+								break;
+							
+							case "Push":
+								buttonAnswer = 0;
+								break;
+						}
+						break;
+				}
+				
+				if (wiresCount === 3) {
+					if (bombColor === "white" || bombColor === "red") {
 						switch (true) {
-							case types[0] == 2 && types[2] != 1:
-								answer = 1;
+							case wiresTypes[0] == 2 && wiresTypes[2] != 1:
+								wiresAnswer = 1;
 								break;
 							
-							case types[0] == 0 && types[1] != 2:
-								answer = 0;
+							case wiresTypes[0] == 0 && wiresTypes[1] != 2:
+								wiresAnswer = 0;
 								break;
 							
-							case types[1] == 1:
-								answer = 1;
+							case wiresTypes[1] == 1:
+								wiresAnswer = 1;
 								break;
 							
-							case types[2] == 2:
-								answer = 2;
+							case wiresTypes[2] == 2:
+								wiresAnswer = 2;
 								break;
 							
 							default:
-								answer = 0;
+								wiresAnswer = 0;
 								break;
 						}
 					} else {
 						switch (true) {
-							case types[0] == 1 && types[2] != 1:
-								answer = 2;
+							case wiresTypes[0] == 1 && wiresTypes[2] != 1:
+								wiresAnswer = 2;
 								break;
 							
-							case types[0] == 2 && types[2] != 0:
-								answer = 1;
+							case wiresTypes[0] == 2 && wiresTypes[2] != 0:
+								wiresAnswer = 1;
 								break;
 
-							case types[1] == 2:
-								answer = 2;
+							case wiresTypes[1] == 2:
+								wiresAnswer = 2;
 								break;
 							
-							case types[1] != 1:
-								answer = 1;
+							case wiresTypes[1] != 1:
+								wiresAnswer = 1;
 								break;
 							
 							default:
-								answer = 0;
+								wiresAnswer = 0;
 								break;
 						}
 					}
 				} else {
-					if (private[socket.id].bomb.color === "white" || private[socket.id].bomb.color === "red") {
+					if (bombColor === "white" || bombColor === "red") {
 						switch (true) {
-							case types[1] == 2 && types[3] != 1:
-								answer = 1;
+							case wiresTypes[1] == 2 && wiresTypes[3] != 1:
+								wiresAnswer = 1;
 								break;
 							
-							case types[1] != 1 && types[2] == 2:
-								answer = 0;
+							case wiresTypes[1] != 1 && wiresTypes[2] == 2:
+								wiresAnswer = 0;
 								break;
 							
-							case types[0] == 0:
-								answer = 3;
+							case wiresTypes[0] == 0:
+								wiresAnswer = 3;
 								break;
 							
-							case types[1] != 2:
-								answer = 2;
+							case wiresTypes[1] != 2:
+								wiresAnswer = 2;
 								break;
 							
 							default:
-								answer = 3;
+								wiresAnswer = 3;
 								break;
 						}
 					} else {
 						switch (true) {
-							case types[1] == 1 && types[2] != 1:
-								answer = 0;
+							case wiresTypes[1] == 1 && wiresTypes[2] != 1:
+								wiresAnswer = 0;
 								break;
 							
-							case types[0] == 2 && types[1] != 0:
-								answer = 3;
+							case wiresTypes[0] == 2 && wiresTypes[1] != 0:
+								wiresAnswer = 3;
 								break;
 							
-							case types[3] != 2:
-								answer = 1;
+							case wiresTypes[3] != 2:
+								wiresAnswer = 1;
 								break;
 							
-							case types[0] == 1:
-								answer = 0;
+							case wiresTypes[0] == 1:
+								wiresAnswer = 0;
 								break;
 							
 							default:
-								answer = 2;
+								wiresAnswer = 2;
 								break;
 						}
 					}
 				}
 
-				private[socket.id].wires.answer = answer.toString();
+				private[socket.id].button.answer = ["short","long"][buttonAnswer];
+				private[socket.id].keypad.answer = keypadAnswer;
+				private[socket.id].wires.answer = wiresAnswer;
+
 
 				socket.emit("game-trial",{
 					bomb: {
-						color: private[socket.id].bomb.color
+						color: bombColor
+					},
+
+					button: {
+						color: buttonColor,
+						text: buttonText
+					},
+
+					keypad: {
+						number: private[socket.id].keypad.number
 					},
 
 					wires: {
-						count: private[socket.id].wires.count,
-						types: private[socket.id].wires.types
+						count: wiresCount,
+						types: wiresTypes
 					}
 				});
 
 				socket.on("game-check",(type,value,callback) => {
 					let valid;
 					switch (type) {
+						case "button":
+							valid = value == private[socket.id].button.answer;
+							break;
+						
+						case "keypad":
+							valid = value == private[socket.id].keypad.answer;
+							break;
+						
 						case "wires":
 							valid = value == private[socket.id].wires.answer;
 							break;
 					}
 
-					if (!valid) {
+					if (valid) {
+						database.scores[socket.id].progress++;
+					} else {
 						database.scores[socket.id].lifes--;
+					}
+
+					// if (database.scores[socket.id].progress === 3) {
+					if (database.scores[socket.id].progress === 1) {
+						database.scores[socket.id].finished = database.end - Date.now();
+						socket.emit("game-end-screen");
 					}
 
 					if (database.scores[socket.id].lifes <= 0) {
 						socket.emit("game-boom");
-						datas.broadcast.except(socket.id).emit("game-boom-for",socket.id);
+					}
+
+					let gameFinished = true;
+					for (let id in database.scores) {
+						gameFinished = gameFinished && (database.scores[id].finished || database.scores[id].lifes <= 0);
+					}
+
+					if (gameFinished) {
+						clearInterval(database.endTimeout);
+						end();
 					}
 
 					datas.broadcast.emit("game-datas",database);
 
 					callback(valid);
 				});
-			});
+			}
 
-			setTimeout(() => {
-				datas.broadcast.emit("game-end",database.scores);
-
-				sockets.forEach((socket) => {
-					socket.removeAllListeners("game-end");
-				});
-			},database.end - Date.now());
-
+			private.endTimeout = setTimeout(end,database.end - Date.now());
 			datas.broadcast.emit("game-datas",database);
 		}
 	}

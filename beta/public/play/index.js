@@ -258,9 +258,9 @@ window.start = () => {
 			}
 		},
 
-		roomMode (mode) {
+		roomMode () {
 			if (document.querySelector("main[status=room] options switch")) {
-				document.querySelector("main[status=room] options switch").classList.toggle("active",!mode);
+				document.querySelector("main[status=room] options switch").classList.toggle("active",socket.room.mode === "public");
 			}
 		},
 
@@ -338,7 +338,7 @@ window.start = () => {
 				main.setAttribute("status","world");
 				main.innerHTML = "";
 				world.setup(main);
-				world.run(socket);
+				world.run(Display.room);
 			}
 		},
 
@@ -376,8 +376,6 @@ window.start = () => {
 		Display.home();
 	});
 
-	socket.on("room-mode-changed",Display.roomMode);
-
 	socket.on("room-message",(message) => Display.message({
 		author: message.author.name || message.author.id,
 		content: message.content,
@@ -402,12 +400,13 @@ window.start = () => {
 
 	socket.on("meta",(meta) => socket.meta = meta);
 
-	socket.on("ping",(ping,roomUsers,callback) => {
+	socket.on("ping",(ping,room,callback) => {
 		socket.ping = ping;
 		Display.ping();
 
-		if (socket.room && roomUsers) {
-			socket.room.users = roomUsers;
+		socket.room = room;
+		if (room) {
+			Display.roomMode();
 			Display.roomUsers();
 		}
 

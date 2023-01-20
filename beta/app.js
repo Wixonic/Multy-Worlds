@@ -2,7 +2,7 @@ const { FORBIDDEN_CHARS, PORT, VERSION } = require("./static.js");
 const { World } = require("./worlds.js");
 
 const server = require("http").createServer();
-const io = new (require("socket.io").Server)(server,{
+var io = new (require("socket.io").Server)(server,{
 	connectTimeout: 5000,
 	pingInterval: 5000,
 	pingTimeout: 10000,
@@ -208,6 +208,7 @@ io.on("connection",(socket) => {
 			const check = () => {
 				if (io.rooms[socket.room] instanceof Room && world) {
 					if (ready === io.rooms[socket.room].usersCount) {
+						io.rooms[socket.room].status = "playing";
 						io.to(socket.room).emit("game-start");
 						world.start({
 							get broadcast() {
@@ -219,6 +220,9 @@ io.on("connection",(socket) => {
 							get sockets () {
 								return io.in(socket.room).fetchSockets();
 							}
+						},() => {
+							io.rooms[socket.room].status = "waiting";
+							console.log(`R-${socket.room}: Ended world "${world.id}"`);
 						});
 					}
 				}
@@ -251,9 +255,8 @@ io.on("connection",(socket) => {
 	socket.on("room-change-mode",(mode,callback) => {
 		if (io.rooms[socket.room] instanceof Room && io.rooms[socket.room].owner === socket.id) {
 			io.rooms[socket.room].mode = mode ? "private" : "public";
-			io.to(io.rooms[socket.room].id).emit("room-mode-changed",mode);
-			callback();
 			console.log(`R-${socket.room}: Changed mode (${mode ? "private" : "public"})`);
+			callback();
 		}
 	});
 
@@ -340,9 +343,8 @@ io.on("connection",(socket) => {
 
 
 	socket.ping = () => {
-		const room = io.rooms[socket.room];
 		const pingStart = performance.now();
-		socket.volatile.emit("ping",Math.ceil(socket.currentPing),room instanceof Room ? room.export().users : [],() => socket.currentPing = performance.now() - pingStart);
+		socket.volatile.emit("ping",Math.ceil(socket.currentPing),(io.rooms[socket.room] instanceof Room ? io.rooms[socket.room].export() : null),() => socket.currentPing = performance.now() - pingStart);
 		setTimeout(socket.ping,1000);
 	};
 	socket.ping();
