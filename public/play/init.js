@@ -1,11 +1,11 @@
-window.server = "beta";
+window.server = "eu";
 
 try {
 	const searchParams = new URLSearchParams(location.search);
 	server = searchParams.get("server");
 
-	if (!["beta"].includes(server)) {
-		server = "beta";
+	if (!["eu","as","us"].includes(server)) {
+		server = "eu";
 	}
 } catch {}
 server = location.hostname === "localhost" ? "local" : server;

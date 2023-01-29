@@ -210,6 +210,12 @@ io.on("connection",(socket) => {
 					if (ready === io.rooms[socket.room].usersCount) {
 						io.rooms[socket.room].status = "playing";
 						io.to(socket.room).emit("game-start");
+
+						world.end = () => {
+							io.rooms[socket.room].status = "waiting";
+							console.log(`R-${socket.room}: Ended world "${world.id}"`);
+						};
+
 						world.start({
 							get broadcast() {
 								return io.in(socket.room);
@@ -220,9 +226,6 @@ io.on("connection",(socket) => {
 							get sockets () {
 								return io.in(socket.room).fetchSockets();
 							}
-						},() => {
-							io.rooms[socket.room].status = "waiting";
-							console.log(`R-${socket.room}: Ended world "${world.id}"`);
 						});
 					}
 				}

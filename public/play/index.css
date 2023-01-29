@@ -45,7 +45,7 @@ header {
 	top: 0;
 	left: 0;
 
-	width: calc(100% - 1rem);
+	width: 100%;
 	height: 2rem;
 
 	background: rgba(17,17,25,0.9);
@@ -312,7 +312,7 @@ main[status="home"] input {
 
 	position: relative;
 
-	width: calc(100% - 1rem);
+	width: 100%;
 
 	background: none;
 
@@ -460,8 +460,8 @@ main[status="room"] id {
 
 	display: block;
 
-	width: calc(100% - 0.4rem);
-	max-width: calc(60rem - 0.4rem);
+	width: 100%;
+	max-width: 60rem;
 
 	color: #AAA;
 	font-family: "Fira Code", monospace;
@@ -490,8 +490,8 @@ main[status="room"] icon {
 
 main[status="room"] list,
 main[status="room"] chat {
-	width: 30rem;
-	max-width: calc(100% - 2.6rem);
+	max-width: 30rem;
+	width: 100%;
 }
 
 main[status="room"] list {
