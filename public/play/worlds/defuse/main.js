@@ -1,31 +1,32 @@
-const initialDatas = {
-	DOM: {
-		main: null,
-		bomb: document.createElement("bomb"),
-		wires: document.createElement("wires"),
-		keypad: document.createElement("keypad"),
-		timerContainer: document.createElement("timercontainer"),
-		timer: document.createElement("timer"),
-		bigBtn: document.createElement("bigbutton"),
-		LEDs: [],
-		middleLED: document.createElement("led"),
-		manual: document.createElement("manual")
-	},
+const initialDatas = () => {
+	return {
+		DOM: {
+			main: null,
+			bomb: document.createElement("bomb"),
+			wires: document.createElement("wires"),
+			keypad: document.createElement("keypad"),
+			timerContainer: document.createElement("timercontainer"),
+			timer: document.createElement("timer"),
+			bigBtn: document.createElement("bigbutton"),
+			LEDs: [],
+			middleLED: document.createElement("led"),
+			manual: document.createElement("manual")
+		},
 
-	startTimestamp: 0,
-	endTimestamp: 0,
+		startTimestamp: 0,
+		endTimestamp: 0,
 
-	endScreen: false,
-	startTimeout: null,
-	toLobby: null
+		endScreen: false,
+		startTimeout: null,
+		toLobby: null
+	};
 };
 
 let datas;
 
 export const load = async () => {
-	datas = initialDatas;
+	datas = initialDatas();
 
-	datas.DOM.manual.innerHTML = "";
 	datas.DOM.manual.iframe = document.createElement("iframe");
 	datas.DOM.manual.iframe.innerHTML = "Loading...";
 	datas.DOM.manual.iframe.src = "/worlds/defuse/";
@@ -35,10 +36,6 @@ export const load = async () => {
 export const setup = (main) => {
 	datas.DOM.main = main;
 	datas.DOM.main.innerHTML = "";
-
-	datas.DOM.bomb.innerHTML = "";
-
-	datas.DOM.wires.innerHTML = "";
 
 	datas.DOM.timer.innerHTML = `<span style="opacity: 0.1">88:88</span>`;
 	datas.DOM.timerContainer.append(datas.DOM.timer);
