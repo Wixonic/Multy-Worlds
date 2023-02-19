@@ -295,9 +295,9 @@ window.start = () => {
 				if (is) {
 					modeSwitch.classList.add("canclick");
 					modeSwitch.addEventListener("click",() => {
-						if (!modeSwitch.classList.contains("disabled")) {
-							modeSwitch.classList.add("disabled");
-							socket.emit("room-change-mode",modeSwitch.classList.contains("active"),() => modeSwitch.classList.remove("disabled"));
+						if (!modeSwitch.hasAttribute("disabled")) {
+							modeSwitch.setAttribute("disabled","true");
+							socket.emit("room-change-mode",modeSwitch.classList.contains("active"),() => modeSwitch.removeAttribute("disabled"));
 						}
 					});
 				}
@@ -400,7 +400,7 @@ window.start = () => {
 
 	socket.on("meta",(meta) => socket.meta = meta);
 
-	socket.on("ping",(ping,room,callback) => {
+	/* socket.on("ping",(ping,room,callback) => {
 		socket.ping = ping;
 		Display.ping();
 
@@ -411,7 +411,7 @@ window.start = () => {
 		}
 
 		callback();
-	});
+	}); */
 
 
 	socket.once("connect",() => {

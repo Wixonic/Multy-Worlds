@@ -728,30 +728,31 @@ main[status="room"] options switch {
 	
 	margin: auto;
 	padding: 0.5rem 0.9rem;
+
+	cursor: pointer;
 	
 	transition: background-color 0.2s linear;
 }
 
-main[status="room"] options switch.disabled {
-	--background: #666!important;
-
-	cursor: default!important;
+main[status="room"] options switch:hover {
+	--background: #800;
 }
 
 main[status="room"] options switch.active {
 	--background: #040;
 }
 
-main[status="room"] options switch.canclick {
-	cursor: pointer;
-}
-
-main[status="room"] options switch.canclick:hover {
-	--background: #800;
-}
-
-main[status="room"] options switch.canclick.active:hover {
+main[status="room"] options switch.active:hover {
 	--background: #080;
+}
+
+main[status="room"] options switch[disabled],
+main[status="room"] options switch[disabled]:hover,
+main[status="room"] options switch[disabled].active,
+main[status="room"] options switch[disabled].active:hover {
+	--background: #666;
+
+	cursor: default;
 }
 
 main[status="room"] options switch cache {

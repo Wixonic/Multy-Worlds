@@ -52,6 +52,8 @@ World.defuse = class defuse extends World {
 				progress: 0,
 				name: socket.name || "Player"
 			};
+
+			console.log(this.database.scores[socket.id]);
 	
 			this.private[socket.id] = {
 				bomb: {
@@ -313,24 +315,24 @@ World.defuse = class defuse extends World {
 				} else {
 					this.database.scores[socket.id].lifes--;
 				}
+
+				console.log(this.database.scores[socket.id]);
 	
 				// if (this.database.scores[socket.id].progress === 3) {
 				if (this.database.scores[socket.id].progress === 1) {
 					this.database.scores[socket.id].finished = this.database.end - Date.now();
 					socket.emit("game-end-screen");
-				}
-	
-				if (this.database.scores[socket.id].lifes <= 0) {
+				} else if (this.database.scores[socket.id].lifes <= 0) {
 					socket.emit("game-boom");
 				}
 	
 				let gameFinished = true;
 				for (let id in this.database.scores) {
-					gameFinished = gameFinished && (this.database.scores[id].finished !== false || this.database.scores[id].lifes <= 0);
+					gameFinished &= this.database.scores[id].finished !== false || this.database.scores[id].lifes <= 0;
 				}
 	
 				if (gameFinished) {
-					clearInterval(this.database.endTimeout);
+					clearInterval(this.private.endTimeout);
 					end();
 				}
 	

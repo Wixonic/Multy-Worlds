@@ -16,9 +16,15 @@ var io = new (require("socket.io").Server)(server,{
 	serveClient: false,
 
 	cors: {
-		origin: true
+		origin: [
+			"https://admin.socket.io",
+			"https://multy.wixonic.fr"
+		],
+		credentials: true
 	}
 });
+
+require("@socket.io/admin-ui").instrument(io,{ auth: false });
 
 server.listen(PORT,() => console.info(`Listening on ${server.address().address}:${server.address().port} (${server.address().family})`));
 
@@ -95,17 +101,9 @@ class Room {
 };
 
 
-
-io.of("/").adapter.on("create-room",(id) => {
-	if (id && io.rooms[id] instanceof Room) {
-		console.log(`R-${id}: Created`);
-	}
-});
-
 io.of("/").adapter.on("delete-room",(id) => {
 	if (io.rooms[id] instanceof Room) {
 		delete io.rooms[id];
-		console.log(`R-${id}: Deleted`);
 	}
 });
 
@@ -131,7 +129,6 @@ io.of("/").adapter.on("join-room",(id,uid) => {
 
 			user.room = id;
 			user.emit("room",io.rooms[id].export());
-			console.log(`R-${id}: U-${uid} joined`);
 		}
 	}
 });
@@ -144,14 +141,12 @@ io.of("/").adapter.on("leave-room",(id,uid) => {
 		io.to(id).except(uid).emit("room-user-leaved",user.name,user.leaveReason);
 		delete user.room;
 		user.emit("room-leaved");
-		console.log(`R-${id}: U-${uid} leaved: ${user.leaveReason || "an error occured"}`);
 
 		if (userIndex === 0) {
 			const newOwner = io.of("/").sockets.get(io.rooms[id].users[0]);
 
 			if (newOwner) {
 				newOwner.emit("room-owner",true);
-				console.log(`R-${id}: U-${newOwner.id} is the new owner`);
 			}
 		}
 	};
@@ -159,16 +154,10 @@ io.of("/").adapter.on("leave-room",(id,uid) => {
 
 
 io.on("connection",(socket) => {
-	console.info(`U-${socket.id}: Connection`);
-
-	socket.on("disconnecting",(reason) => {
-		socket.leaveReason = "disconnected";
-		console.warn(`U-${socket.id}: Disconnection (${reason})`);
-	});
+	socket.on("disconnecting",() => socket.leaveReason = "disconnected");
 
 	socket.emit("ask","version",(version) => {
 		if (version !== VERSION) {
-			console.error(`U-${socket.id}: Running on "${version}", expected "${VERSION}"`);
 			socket.disconnect(true);
 		}
 	});
@@ -191,7 +180,6 @@ io.on("connection",(socket) => {
 
 			socket.name = name;
 			callback(name);
-			console.log(`U-${socket.id}: Changed name`);
 		}
 	});
 
@@ -203,6 +191,8 @@ io.on("connection",(socket) => {
 
 			const world = World();
 
+			console.log(world);
+
 			let ready = 0;
 
 			const check = () => {
@@ -212,8 +202,8 @@ io.on("connection",(socket) => {
 						io.to(socket.room).emit("game-start");
 
 						world.end = () => {
+							io.to(socket.room).emit("game-ended");
 							io.rooms[socket.room].status = "waiting";
-							console.log(`R-${socket.room}: Ended world "${world.id}"`);
 						};
 
 						world.start({
@@ -246,8 +236,6 @@ io.on("connection",(socket) => {
 					check();
 				});
 			});
-
-			console.log(`R-${socket.room}: Started world "${world.id}"`);
 		} else if (io.rooms[socket.room].status !== "waiting") {
 			callback();
 		}
@@ -258,7 +246,6 @@ io.on("connection",(socket) => {
 	socket.on("room-change-mode",(mode,callback) => {
 		if (io.rooms[socket.room] instanceof Room && io.rooms[socket.room].owner === socket.id) {
 			io.rooms[socket.room].mode = mode ? "private" : "public";
-			console.log(`R-${socket.room}: Changed mode (${mode ? "private" : "public"})`);
 			callback();
 		}
 	});
@@ -329,8 +316,6 @@ io.on("connection",(socket) => {
 				type: "user",
 				style: room.owner === socket.id ? "owner" : "default"
 			});
-
-			console.log(`R-${socket.room}: Message`);
 		}
 	});
 
@@ -340,25 +325,23 @@ io.on("connection",(socket) => {
 		let rooms = [];
 		io.publicRooms.forEach((room) => rooms.push(room.lightExport()));
 		callback(rooms);
-		console.log(`U-${socket.id}: Getting public rooms`);
 	});
 
 
 
-	socket.ping = () => {
+	/* socket.ping = () => {
 		const pingStart = performance.now();
 		socket.volatile.emit("ping",Math.ceil(socket.currentPing),(io.rooms[socket.room] instanceof Room ? io.rooms[socket.room].export() : null),() => socket.currentPing = performance.now() - pingStart);
 		setTimeout(socket.ping,1000);
 	};
-	socket.ping();
+	socket.ping(); */
 });
+
+
 
 process.on("SIGTERM",() => {
 	logger.info(`${pkg.name}: received SIGTERM`);
 	closeConnection();
 	logger.end();
-	logger.on("finish", () => {
-		console.log(`${pkg.name}: logs flushed`);
-		process.exit(0);
-	});
+	logger.on("finish", () => process.exit(0));
 });

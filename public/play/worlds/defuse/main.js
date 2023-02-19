@@ -91,7 +91,7 @@ export const run = (toLobby) => {
 		update();
 
 		socket.on("game-datas",(d) => {
-			console.log(d);
+
 		});
 	});
 
@@ -118,8 +118,6 @@ export const run = (toLobby) => {
 			});
 			datas.DOM.wires.append(wire);
 		}
-
-		console.log(d);
 	});
 
 	socket.once("game-boom",() => {
@@ -170,7 +168,7 @@ const endScreen = () => {
 	datas.DOM.main.innerHTML = "";
 
 	datas.DOM.lobby.innerHTML = "Lobby";
-	datas.DOM.lobby.style.cssText = "display: none";
+	datas.DOM.lobby.style.cssText = `display: ${datas.ended ? "block" : "none"}`;
 	datas.DOM.lobby.addEventListener("click",() => {
 		clearTimeout(datas.toLobbyTimeout);
 		datas.toLobby();
