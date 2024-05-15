@@ -1,4 +1,4 @@
 # Support
 
-- Speak with the Discord community [here](https://discord.gg/UREN5kUSXv)
+- Speak with the Discord community [here](https://go.wixonic.fr/discord)
 - [Contact Staff](mailto:contact@wixonic.fr)
